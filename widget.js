@@ -5,7 +5,7 @@
 const API = "https://script.google.com/macros/s/AKfycbz7tH4iscyXCdtJB4T8GL34Ppp9PuEuUIsw8MjQ-ii3_4Ie6DvusFw8PfhAZ8gjKEJA/exec?format=json&t=";
 const PAGE = "https://cheetahgit9999.github.io/cal/";
 const TZ_OFFSET_MIN = 7 * 60;   // Asia/Bangkok (UTC+7)
-const VERSION = "v4";              // shows in the home widget header so we can tell which code is running
+const VERSION = "v5";              // shows in the home widget header so we can tell which code is running
 const REFRESH_MIN = 15;          // iOS floor is ~15 min; asking sooner is ignored
 const MAX_LINES_RECT = 3;        // lock screen rectangular fits ~3 rows
 const MAX_LINES_HOME = 6;
@@ -118,7 +118,10 @@ function buildWidget(payload, family) {
   if (isLock) {
     // Two rectangular widgets can sit side by side. Set the widget Parameter to
     // "now" (this widget: what you are in right now) or "next" (the one beside it).
-    const mode = String(config.widgetParameter || "").trim().toLowerCase();
+    // Scriptable exposes the widget parameter on `args` (docs: "Use args.widgetParameter");
+    // older builds only had config.widgetParameter, so accept either.
+    const rawParam = (typeof args !== "undefined" && args && args.widgetParameter) || config.widgetParameter || "";
+    const mode = String(rawParam).trim().toLowerCase();
     const running = picked.filter((x) => x.s <= now && x.e > now)[0];
     const upcoming = picked.filter((x) => x.s > now);
     const rows = [];
