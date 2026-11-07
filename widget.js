@@ -41,6 +41,18 @@ function untilText(ms) {
   return m ? `อีก ${h} ชม. ${m} น.` : `อีก ${h} ชม.`;
 }
 
+// Lock screen rows truncate hard; strip noise and clamp so the countdown survives.
+function shorten(s, max) {
+  let t = String(s)
+    .replace(/\([^)]*\)/g, " ")
+    .replace(/^เรียน\s+/, "")
+    .replace(/^Live\s*/, "Live ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (t.length <= max) return t;
+  return t.slice(0, max - 1).trimEnd() + "…";
+}
+
 function rowText(ev, now) {
   const s = new Date(ev.start), e = new Date(ev.end);
   const running = now >= s && now < e;
@@ -70,7 +82,7 @@ function pickEvents(events, now, limit) {
 function buildWidget(payload, family) {
   const now = new Date();
   const isLock = family.indexOf("accessory") === 0;
-  const limit = isLock ? MAX_LINES_RECT : (family === "small" ? 3 : MAX_LINES_HOME);
+  const limit = isLock ? 2 : (family === "small" ? 3 : MAX_LINES_HOME);
   const picked = pickEvents(payload.events, now, limit);
 
   const w = new ListWidget();
@@ -102,6 +114,28 @@ function buildWidget(payload, family) {
     return w;
   }
 
+  if (isLock) {
+    // Line 1 = the actionable number, never truncated; lines 2-3 = what is next.
+    const a = picked[0];
+    const runningNow = a.s <= now && a.e > now;
+    const lead = w.addText(runningNow
+      ? `▶ เหลือ ${Math.max(1, Math.round((a.e - now) / 60000))} น.`
+      : `▶ ${untilText(a.s - now)}`);
+    lead.font = Font.semiboldSystemFont(12);
+    lead.lineLimit = 1;
+
+    for (let i = 0; i < picked.length; i++) {
+      const x = picked[i];
+      const when = x.ev.allDay ? "ทั้งวัน" : hm(x.s);
+      const t = w.addText(`${when} ${shorten(x.ev.title, i === 0 ? 16 : 18)}`);
+      t.font = Font.systemFont(12);
+      t.lineLimit = 1;
+      t.minimumScaleFactor = 0.8;
+    }
+    w.refreshAfterDate = new Date(Date.now() + REFRESH_MIN * 60000);
+    return w;
+  }
+
   for (let i = 0; i < picked.length; i++) {
     const x = picked[i];
     let text = rowText(x.ev, now);
@@ -109,10 +143,10 @@ function buildWidget(payload, family) {
       text += ` · เหลือ ${Math.max(1, Math.round((x.e - now) / 60000))} น.`;
     }
     const t = w.addText(text);
-    t.font = isLock ? Font.systemFont(12) : Font.systemFont(13);
+    t.font = Font.systemFont(13);
     t.lineLimit = 1;
     t.minimumScaleFactor = 0.75;
-    if (!isLock) t.textColor = new Color(i === 0 ? "#e6edf3" : "#adbac7");
+    t.textColor = new Color(i === 0 ? "#e6edf3" : "#adbac7");
   }
 
   if (!isLock && family !== "small") {
