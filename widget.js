@@ -82,7 +82,7 @@ function pickEvents(events, now, limit) {
 function buildWidget(payload, family) {
   const now = new Date();
   const isLock = family.indexOf("accessory") === 0;
-  const limit = isLock ? 2 : (family === "small" ? 3 : MAX_LINES_HOME);
+  const limit = isLock ? 6 : (family === "small" ? 3 : MAX_LINES_HOME);
   const picked = pickEvents(payload.events, now, limit);
 
   const w = new ListWidget();
@@ -115,20 +115,49 @@ function buildWidget(payload, family) {
   }
 
   if (isLock) {
-    // Line 1 = the actionable number, never truncated; lines 2-3 = what is next.
-    const a = picked[0];
-    const runningNow = a.s <= now && a.e > now;
-    const lead = w.addText(runningNow
-      ? `▶ เหลือ ${Math.max(1, Math.round((a.e - now) / 60000))} น.`
-      : `▶ ${untilText(a.s - now)}`);
-    lead.font = Font.semiboldSystemFont(12);
-    lead.lineLimit = 1;
+    // Two rectangular widgets can sit side by side. Set the widget Parameter to
+    // "now" (this widget: what you are in right now) or "next" (the one beside it).
+    const mode = String(config.widgetParameter || "").trim().toLowerCase();
+    const running = picked.filter((x) => x.s <= now && x.e > now)[0];
+    const upcoming = picked.filter((x) => x.s > now);
+    const rows = [];
 
-    for (let i = 0; i < picked.length; i++) {
-      const x = picked[i];
-      const when = x.ev.allDay ? "ทั้งวัน" : hm(x.s);
-      const t = w.addText(`${when} ${shorten(x.ev.title, i === 0 ? 16 : 18)}`);
-      t.font = Font.systemFont(12);
+    if (mode === "now") {
+      if (running) {
+        rows.push({ t: `▶ เหลือ ${Math.max(1, Math.round((running.e - now) / 60000))} น.`, b: true });
+        rows.push({ t: `${hm(running.s)} ${shorten(running.ev.title, 20)}` });
+        rows.push({ t: `จบ ${hm(running.e)}` });
+      } else if (upcoming.length) {
+        rows.push({ t: "▶ ว่าง", b: true });
+        rows.push({ t: `ถัดไป ${hm(upcoming[0].s)}` });
+        rows.push({ t: shorten(upcoming[0].ev.title, 20) });
+      } else {
+        rows.push({ t: "▶ ว่าง", b: true });
+      }
+    } else if (mode === "next") {
+      const three = upcoming.slice(0, 3);
+      if (!three.length) rows.push({ t: "ไม่มีนัดแล้ว", b: true });
+      for (let k = 0; k < three.length; k++) {
+        rows.push({ t: `${hm(three[k].s)} ${shorten(three[k].ev.title, 20)}`, b: k === 0 });
+      }
+    } else {
+      // default single-widget layout: countdown first, then the next two items
+      const a = picked[0];
+      if (!a) {
+        rows.push({ t: "ว่าง", b: true });
+      } else {
+        rows.push({ t: running ? `▶ เหลือ ${Math.max(1, Math.round((running.e - now) / 60000))} น.` : `▶ ${untilText(a.s - now)}`, b: true });
+        for (let k = 0; k < Math.min(2, picked.length); k++) {
+          const x = picked[k];
+          const when = x.ev.allDay ? "ทั้งวัน" : hm(x.s);
+          rows.push({ t: `${when} ${shorten(x.ev.title, k === 0 ? 16 : 18)}` });
+        }
+      }
+    }
+
+    for (const r of rows) {
+      const t = w.addText(r.t);
+      t.font = r.b ? Font.semiboldSystemFont(12) : Font.systemFont(12);
       t.lineLimit = 1;
       t.minimumScaleFactor = 0.8;
     }
