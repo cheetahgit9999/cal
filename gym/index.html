@@ -202,13 +202,13 @@ button.muted{background:#3d1418;border-color:#7d2a30}
 var PROGRAM = {
   MON: { label: "MONDAY (REST)", rest: true },
   TUE: { label: "TUESDAY (UPPER)", ex: [
-    { t: "1. Machine Pec Ty Deck x2", s: 2, w: "50", r: "" },
+    { t: "1. Machine Pec Deck x2", s: 2, w: "50", r: "" },
     { t: "2. Incline Chest Press x2", s: 2, w: "50+15", r: "" },
     { t: "3. Lateral Raise x2", s: 2, w: "50", r: "7" },
     { t: "4. T-Bar Row x1", s: 1, w: "40", r: "5" },
     { t: "5. Lat Pulldown x1", s: 1, w: "35", r: "" },
     { t: "6. Standing cable Curl x1 (rest 2-3min)", s: 1, w: "13.75", r: "7" },
-    { t: "7. 🔺Cable Tricep Extension x1 (rest 2-3min)", s: 1, w: "11.25", r: "7" },
+    { t: "7. 🔺Cable Tricep Extension x1 (rest 2-3min)", s: 1, w: "13.75", r: "7" },
     { t: "8. Cable Hammer Curl x1", s: 1, w: "13.6", r: "" },
     { t: "9. 🔺Cable Overhead Tricep Extension x1 (rest 2-3 min)", s: 1, w: "13.75", r: "" }
   ]},
@@ -221,17 +221,17 @@ var PROGRAM = {
   ]},
   THU: { label: "THURSDAY (REST)", rest: true },
   FRI: { label: "FRIDAY (PUSH)", ex: [
-    { t: "1. Machine Pec Deck x2", s: 2, w: "30+15", r: "9" },
+    { t: "1. Machine Pec Deck x2", s: 2, w: "50", r: "9" },
     { t: "2. Incline Chest Press x2", s: 2, w: "50+15", r: "5" },
     { t: "3. Shoulder Press x1", s: 1, w: "50", r: "4" },
     { t: "4. Lateral Raise x2", s: 2, w: "50", r: "7" },
     { t: "5. Cable Tricep Extension x1 (2 min)", s: 1, w: "13.75", r: "" },
-    { t: "6. Cable Overhead Tricep Extension x1", s: 1, w: "11.25", r: "7" },
+    { t: "6. Cable Overhead Tricep Extension x1", s: 1, w: "13.75", r: "7" },
     { t: "7. Standing Calf Raise x2", s: 2, w: "70", r: "10" },
     { t: "8. Adductor x1", s: 1, w: "50+15", r: "7" }
   ]},
   SAT: { label: "SATURDAY (PULL)", ex: [
-    { t: "1. T-Bar Row x2", s: 2, w: "37.5", r: "8" },
+    { t: "1. T-Bar Row x2", s: 2, w: "40", r: "8" },
     { t: "2. Lat Pulldown x2", s: 2, w: "35", r: "9" },
     { t: "3. Close-Grip Lat Row x2", s: 2, w: "25", r: "5" },
     { t: "4. Rear delt cable fly x1", s: 1, w: "8.75", r: "8" },
@@ -252,7 +252,7 @@ var REP_MIN = 5, REP_MAX = 10, REP_BUMP = 11, REST_GOAL = 180;
 var KEY = "gym.v2";
 // renamed exercises: history logged under the old name moves to the new one
 var RENAMED = {
-  TUE: { "8. Cable Hammer Curl x1 (rest 2-3min)": "8. Cable Hammer Curl x1" },
+  TUE: { "8. Cable Hammer Curl x1 (rest 2-3min)": "8. Cable Hammer Curl x1", "1. Machine Pec Ty Deck x2": "1. Machine Pec Deck x2" },
   WED: { "6. Abs Crunch x2": "5. Abs Crunch x2" },
   FRI: {
     "3. Machine Pec Deck x2": "1. Machine Pec Deck x2", "4. Incline Chest Press x2": "2. Incline Chest Press x2",
@@ -293,6 +293,10 @@ function migrate(d) {
       delete L.ex[o];
     });
   }); });
+  Object.keys(RENAMED).forEach(function (pg) { Object.keys(RENAMED[pg]).forEach(function (o) {
+    var ok = pg + "|" + o, nk = pg + "|" + RENAMED[pg][o];
+    if (d.notes && ok in d.notes) { if (!(nk in d.notes)) d.notes[nk] = d.notes[ok]; delete d.notes[ok]; }
+  }); });
   return d;
 }
 function load() {
@@ -306,7 +310,7 @@ if (db.resetOnce !== RESET_ONCE) { db.log = {}; db.prs = {}; db.resetOnce = RESE
 // notes written next to each exercise in the original program text (verbatim). Seeded once;
 // notes the user already has are never overwritten, and edits/clears afterwards stick.
 var SEED_NOTES = {
-  "TUE|1. Machine Pec Ty Deck x2": "50kg / reps",
+  "TUE|1. Machine Pec Deck x2": "50kg / reps",
   "TUE|2. Incline Chest Press x2": "50kg /  reps",
   "TUE|3. Lateral Raise x2": "50 kg / 7 reps",
   "TUE|4. T-Bar Row x1": "40 kg / 5 reps",
@@ -386,8 +390,11 @@ function hasReps(e) { return e && e.r !== "" && e.r != null; }
 // change vs the last session (or the program's starting numbers): dir 1 = progressive overload, -1 = went down
 // ===== saved PRs, shared by the same exercise on every day =====
 // "3. Lateral Raise x2" (TUE) and "4. Lateral Raise x2" (FRI) are one exercise: number, 🔺, (notes) and xN are ignored.
+// names written differently in the program but meaning the same exercise (display names stay as written)
+var SAME_AS = {};
 function baseName(t) {
-  return String(t).replace(/^\s*\d+\.\s*/, "").replace(/🔺/g, "").replace(/\([^)]*\)/g, " ").trim().replace(/\s+x\d+$/i, "").replace(/\s+/g, " ").trim().toLowerCase();
+  var b = String(t).replace(/^\s*\d+\.\s*/, "").replace(/🔺/g, "").replace(/\([^)]*\)/g, " ").trim().replace(/\s+x\d+$/i, "").replace(/\s+/g, " ").trim().toLowerCase();
+  return SAME_AS[b] || b;
 }
 // db.prs[base] = [{ w, r, at }] sorted by date; at most one save per date
 function prAsOf(base, k, inclusive) {
