@@ -72,6 +72,18 @@ input[type=date]{background:#0b0e13;border:1px solid #30363d;border-radius:8px;p
 #timer .pb{height:4px;background:#30363d;border-radius:2px;margin-top:6px;overflow:hidden}
 #timer .pb i{display:block;height:100%;background:#d29922;width:0}
 #timer.ready .pb i{background:#3fb950}
+#pop{position:fixed;inset:0;z-index:20;background:rgba(1,4,9,.88);display:none;align-items:center;justify-content:center;padding:20px}
+#pop.on{display:flex;animation:pin .25s ease}
+@keyframes pin{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:none}}
+#pop .bx{width:100%;max-width:420px;background:#0f2a17;border:2px solid #3fb950;border-radius:22px;padding:26px 20px 20px;text-align:center;box-shadow:0 0 0 8px #3fb95022}
+#pop .big{font-size:76px;font-weight:800;color:#3fb950;line-height:1;font-variant-numeric:tabular-nums}
+#pop .h{font-size:24px;font-weight:750;margin:12px 0 4px}
+#pop .s{color:#adbac7;font-size:14px;margin-bottom:6px}
+#pop .nx{color:#8b949e;font-size:13px;margin:10px 0 18px;background:#0b1a10;border-radius:10px;padding:8px}
+#pop .nx b{color:#e6edf3;display:block;font-size:15px}
+#pop button{display:block;width:100%;padding:15px;font-size:18px;font-weight:700;border-radius:14px;margin-top:10px}
+#pop .go{background:#238636;border-color:#238636;color:#fff}
+#pop .rest2{background:none;border-color:#30363d;color:#adbac7}
 .ok.on{background:#238636;border-color:#238636;color:#fff}
 .tag{grid-column:2/5;font-size:11.5px;margin-top:-3px;font-variant-numeric:tabular-nums}
 .tag .lo{color:#f85149}.tag .in{color:#3fb950}.tag .hi{color:#f0883e}.tag .eq{color:#8b949e}
@@ -110,6 +122,15 @@ input[type=date]{background:#0b0e13;border:1px solid #30363d;border-radius:8px;p
   <div class="clk" id="clk">0:00</div>
   <div class="tx"><b id="tst">พัก</b><span id="tlast"></span><span id="tnext"></span><div class="pb"><i id="tpb"></i></div></div>
   <button id="tstop">หยุด</button>
+</div></div>
+
+<div id="pop" role="dialog" aria-modal="true"><div class="bx">
+  <div class="big" id="pclk">3:00</div>
+  <div class="h">ครบ 3 นาทีแล้ว ✓</div>
+  <div class="s">พร้อมก็เล่นต่อเลย · ยังเหนื่อยก็พักต่อ นาฬิกายังนับต่อ</div>
+  <div class="nx" id="pnext"></div>
+  <button class="go" id="pgo">💪 พร้อม เล่นต่อ</button>
+  <button class="rest2" id="prest">😮‍💨 พักต่อ</button>
 </div></div>
 
 <script>
@@ -294,20 +315,38 @@ function findNext() {
 var REST_GOAL = 180, TKEY = "gym.timer";
 var timer = null;
 try { timer = JSON.parse(localStorage.getItem(TKEY)); } catch (e) {}
-var audio = null, beeped = false;
+var audio = null;
 function startRest(id, title, i, n) {
   try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch (e) {}
-  timer = { id: id, start: Date.now(), last: title + " · เซ็ต " + (i + 1) + "/" + n };
-  beeped = false;
-  try { localStorage.setItem(TKEY, JSON.stringify(timer)); } catch (e) {}
+  timer = { id: id, start: Date.now(), last: title + " · เซ็ต " + (i + 1) + "/" + n, popped: false };
+  saveTimer(); closePop(); wake(true);
 }
-function stopRest() { timer = null; try { localStorage.removeItem(TKEY); } catch (e) {} updateTimer(); }
+function saveTimer() { try { timer ? localStorage.setItem(TKEY, JSON.stringify(timer)) : localStorage.removeItem(TKEY); } catch (e) {} }
+function stopRest() { timer = null; saveTimer(); closePop(); wake(false); updateTimer(); }
+
+// keep the screen on while resting (Android Chrome supports this; ignored elsewhere)
+var lock = null;
+function wake(on) {
+  try {
+    if (on && !lock && navigator.wakeLock) navigator.wakeLock.request("screen").then(function (l) { lock = l; l.addEventListener("release", function () { lock = null; }); }).catch(function () {});
+    if (!on && lock) { lock.release(); lock = null; }
+  } catch (e) {}
+}
+function fmtClock(sec) { var m = Math.floor(sec / 60), x = sec % 60; return m + ":" + (x < 10 ? "0" : "") + x; }
+function openPop() {
+  document.getElementById("pop").className = "on";
+  document.getElementById("pnext").innerHTML = nextUp
+    ? "ถัดไป<b></b>" : "<b>ครบทุกเซ็ตแล้ว 🎉</b>";
+  if (nextUp) document.querySelector("#pnext b").textContent = nextUp.t + " · เซ็ต " + (nextUp.i + 1) + "/" + nextUp.n + (nextUp.r ? "  (" + nextUp.w + " × " + nextUp.r + ")" : "  (" + nextUp.w + " kg)");
+}
+function closePop() { document.getElementById("pop").className = ""; }
 function beep() {
-  try { if (navigator.vibrate) navigator.vibrate([200, 100, 200]); } catch (e) {}
+  try { if (navigator.vibrate) navigator.vibrate([400, 150, 400, 150, 800]); } catch (e) {}
   if (!audio) return;
   try {
-    [0, 0.25].forEach(function (t) {
+    [0, 0.3, 0.6, 1.2, 1.5, 1.8].forEach(function (t) {
       var o = audio.createOscillator(), g = audio.createGain();
+      o.type = "square";
       o.frequency.value = 880; o.connect(g); g.connect(audio.destination);
       g.gain.setValueAtTime(0.25, audio.currentTime + t); g.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + t + 0.2);
       o.start(audio.currentTime + t); o.stop(audio.currentTime + t + 0.2);
@@ -319,11 +358,16 @@ function updateTimer() {
   if (!timer) { box.className = ""; return; }
   var sec = Math.max(0, Math.floor((Date.now() - timer.start) / 1000));
   var ready = sec >= REST_GOAL;
-  if (ready && !beeped) { beeped = true; if (sec < REST_GOAL + 3) beep(); }
+  // the popup fires once per rest, also when coming back to the page after 3:00 passed
+  if (ready && !timer.popped && document.visibilityState !== "hidden") {
+    timer.popped = true; saveTimer();
+    if (sec < REST_GOAL + 5) beep();
+    openPop();
+  }
   box.className = "on" + (ready ? " ready" : "");
-  var m = Math.floor(sec / 60), ss = sec % 60;
-  document.getElementById("clk").textContent = m + ":" + (ss < 10 ? "0" : "") + ss;
-  document.getElementById("tst").textContent = ready ? "ครบ 3 นาที · พร้อมก็ไปเลย ✓" : "กำลังพัก · เป้า 3:00";
+  document.getElementById("clk").textContent = fmtClock(sec);
+  document.getElementById("pclk").textContent = fmtClock(sec);
+  document.getElementById("tst").textContent = ready ? "ครบ 3 นาที · พร้อมก็ไปเลย ✓" : "พักขั้นต่ำ 3:00 · อีก " + fmtClock(REST_GOAL - sec);
   document.getElementById("tlast").textContent = "เสร็จ: " + timer.last;
   document.getElementById("tnext").textContent = nextUp ? "ถัดไป: " + nextUp.t + " · เซ็ต " + (nextUp.i + 1) + "/" + nextUp.n + (nextUp.r ? " (" + nextUp.w + " × " + nextUp.r + ")" : "") : "ครบทุกเซ็ตแล้ว 🎉";
   document.getElementById("tpb").style.width = Math.min(100, sec / REST_GOAL * 100) + "%";
@@ -445,6 +489,14 @@ document.getElementById("day").onchange = function (e) { if (e.target.value) { c
 document.getElementById("prev").onclick = function () { cur = shift(cur, -1); render(); };
 document.getElementById("next").onclick = function () { cur = shift(cur, 1); render(); };
 document.getElementById("tstop").onclick = stopRest;
+document.getElementById("prest").onclick = closePop;
+document.getElementById("pgo").onclick = function () {
+  closePop();
+  var n = document.querySelector(".set.nxt");
+  if (n) n.scrollIntoView({ behavior: "smooth", block: "center" });
+};
+if (timer) wake(true);
+document.addEventListener("visibilitychange", function () { if (timer && document.visibilityState === "visible") wake(true); });
 document.getElementById("today").onclick = function () { cur = TODAY; render(); };
 document.getElementById("exp").onclick = function () {
   var a = document.createElement("a");
