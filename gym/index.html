@@ -300,6 +300,9 @@ function load() {
   return { log: {}, notes: {} };
 }
 var db = load();
+// one-time: wipe the test taps so every exercise starts from the program numbers again (notes/settings kept)
+var RESET_ONCE = "r1", didReset = false;
+if (db.resetOnce !== RESET_ONCE) { db.log = {}; db.prs = {}; db.resetOnce = RESET_ONCE; didReset = true; try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) {} }
 // notes written next to each exercise in the original program text (verbatim). Seeded once;
 // notes the user already has are never overwritten, and edits/clears afterwards stick.
 var SEED_NOTES = {
@@ -1028,6 +1031,7 @@ document.getElementById("ghSync").onclick = function () { syncNow(true); };
 document.addEventListener("visibilitychange", function () { if (document.visibilityState === "hidden") syncNow(); });
 paintGh();
 if (gh.token) setTimeout(syncNow, 3000);
+if (didReset) { stopRest(); render(); }
 document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") flushKill(); });
 iosOn.onchange = function () { ios.on = iosOn.checked; saveCfg(); };
 iosName.oninput = function () { ios.name = iosName.value.trim(); saveCfg(); };
