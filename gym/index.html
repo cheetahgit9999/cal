@@ -46,7 +46,8 @@ button:active{background:#30363d}
 .badge{flex-shrink:0;font-size:12px;font-weight:800;padding:2px 9px;border-radius:20px}
 .badge.up{background:#2386363d;color:#3fb950}.badge.dn{background:#f851492e;color:#f85149}
 .badge.pr{background:#3b2a07;color:#e3b341}
-button.badge.save{border:1px solid #3fb950;background:#238636;color:#fff;padding:4px 10px;animation:pulse 1.6s ease-in-out infinite}
+button.badge.save{border:1px solid #3fb950;background:#238636;color:#fff;padding:4px 12px}
+button.badge.save.dn{border-color:#f85149;background:#da3633}
 @keyframes pulse{0%,100%{box-shadow:0 0 0 0 #3fb95066}50%{box-shadow:0 0 0 5px #3fb95000}}
 .card.pr{box-shadow:inset 4px 0 0 #3fb950}.card.rg{box-shadow:inset 4px 0 0 #f85149}
 .game{display:flex;justify-content:center;gap:6px;margin:14px 0 0;font-size:13px;font-weight:800;font-variant-numeric:tabular-nums}
@@ -190,16 +191,6 @@ button.muted{background:#3d1418;border-color:#7d2a30}
   </div>
 </div></div>
 
-<canvas id="fx"></canvas>
-<div id="lvl"></div>
-<div id="cel"><div class="bx">
-  <div class="tr">🏆</div>
-  <h2>WORKOUT DONE</h2>
-  <div class="st" id="celst"></div>
-  <button id="celok">💪</button>
-  <button id="celwk" class="wkb" style="display:none">📊 สรุปสัปดาห์</button>
-</div></div>
-
 <div id="pop"><div class="bx">
   <div class="big" id="pclk">3:00</div>
   <div class="nx" id="pnext"></div>
@@ -223,7 +214,7 @@ var PROGRAM = {
     { t: "8. Cable Hammer Curl x1", s: 1, w: "13.6", r: "" },
     { t: "9. 🔺Cable Overhead Tricep Extension x1 (rest 2-3 min)", s: 1, w: "13.75", r: "" }
   ]},
-  WED: { label: "WEDNESDAY (LOWER)", note: "พัก 3-5 นาที แล้วแต่จะพร้อมยัง", ex: [
+  WED: { label: "WEDNESDAY (LOWER)", ex: [
     { t: "1. Leg Extension x2", s: 2, w: "90", r: "6" },
     { t: "2. Hack squat x2", s: 2, w: "10", r: "6" },
     { t: "3. Hamstring Curl x2", s: 2, w: "50", r: "7" },
@@ -413,7 +404,7 @@ function savePR(item, e) {
 }
 function compare(prog, item, k, e) {
   // the target to beat: the last PR saved before this date, else last session of this day, else the program's numbers
-  var pr = prAsOf(baseName(item.t), k, false), last = pr ? null : lastFor(prog, item.t, k);
+  var pr = prAsOf(baseName(item.t), k, true), last = pr ? null : lastFor(prog, item.t, k);
   var b = pr ? pr : last ? last.e : { w: item.w, r: item.r };
   var dw = wSum(e.w) - wSum(b.w), dr = hasReps(e) && hasReps(b) ? +e.r - +b.r : 0;
   dw = Math.round(dw * 100) / 100;
@@ -467,42 +458,25 @@ function render() {
   list.appendChild(el("div", "ph" + (P.rest ? " dim" : ""), P.label));
   if (P.note) list.appendChild(el("div", "pn", P.note));
   var slot = document.getElementById("barSlot"); slot.innerHTML = "";
-  if (P.rest) { list.appendChild(gameHeader()); updateTimer(); return; }
+  if (P.rest) { updateTimer(); return; }
   if (P.cardio) {
     var c = el("div", "card"), done = !!(dp(cur, prog) && dp(cur, prog).cardio);
     c.style.display = "flex"; c.style.justifyContent = "space-between"; c.style.alignItems = "center";
     c.appendChild(el("div", "nm", P.cardio));
     var b = el("button", "ok" + (done ? " on" : ""), "✓"); b.style.width = "64px";
-    b.onclick = function () {
-      var before = game();
-      dp(cur, prog, true).cardio = !done; save(); render();
-      if (!done) afterTick(prog, null, before, { set: true, exDone: true, dayDone: true });
-    };
+    b.onclick = function () { dp(cur, prog, true).cardio = !done; save(); render(); };
     c.appendChild(b); if (done) c.classList.add("all");
-    list.appendChild(c); list.appendChild(gameHeader()); updateTimer(); return;
-  }
-  var up = 0, dn = 0;
-  P.ex.forEach(function (item) {
-    var e = entryFor(prog, item, cur);
-    if (!dp(cur, prog) || !dp(cur, prog).ex[item.t]) return; // only what's been touched today
-    var d = compare(prog, item, cur, e).dir; if (d > 0) up++; else if (d < 0) dn++;
-  });
-  if (up || dn) {
-    var sm = el("div", "sum");
-    if (up) sm.appendChild(el("span", "up", "▲ ขึ้น " + up + " ท่า"));
-    if (dn) sm.appendChild(el("span", "dn", "▼ ลง " + dn + " ท่า"));
-    list.appendChild(sm);
+    list.appendChild(c); updateTimer(); return;
   }
   var tot = 0, got = 0;
   P.ex.forEach(function (item) { tot += item.s; got += Math.min(item.s, entryFor(prog, item, cur).d); });
   var bar = el("div", "dbar" + (got === tot ? " full" : "")), fill = el("i");
   fill.style.width = (lastBar[cur + prog] != null ? lastBar[cur + prog] : got / tot * 100) + "%";
-  bar.appendChild(fill); bar.appendChild(el("b", null, got === tot ? "🏆 " + got + "/" + tot : got + "/" + tot));
+  bar.appendChild(fill); bar.appendChild(el("b", null, got + "/" + tot));
   slot.appendChild(bar);
   requestAnimationFrame(function () { requestAnimationFrame(function () { fill.style.width = got / tot * 100 + "%"; }); });
   lastBar[cur + prog] = got / tot * 100;
   P.ex.forEach(function (item, i) { var c = card(prog, item); c.dataset.i = i; list.appendChild(c); });
-  list.appendChild(gameHeader());
   flashKey = null;
   updateTimer();
 }
@@ -521,24 +495,19 @@ function card(prog, item) {
   nb.onclick = toggleNote;
   nw.appendChild(nm); nw.appendChild(nb);
   nr.appendChild(nw);
-  if (cmp.savedNow) nr.appendChild(el("span", "badge pr", "🏆 PR"));
-  else if (cmp.dir > 0) {
-    var sv = el("button", "badge save", "💾 เซฟ PR");
-    sv.onclick = function () {
-      persist(prog, item, e); savePR(item, e); render();
-      var b = document.querySelector('.card[data-i="' + PROGRAM[prog].ex.indexOf(item) + '"] .badge.pr');
-      if (b) { var r = b.getBoundingClientRect(); floatText(r.left + r.width / 2, r.top, "🏆 NEW PR", true); burst(r.left + r.width / 2, r.top + 10, 50, true); }
-      try { if (navigator.vibrate) navigator.vibrate([40, 30, 120]); } catch (x) {}
-    };
+  // changed vs the saved numbers (up or down) → 💾 เซฟ; after saving the card is plain again
+  if (cmp.dir) {
+    var sv = el("button", "badge save" + (cmp.dir < 0 ? " dn" : ""), "💾 เซฟ");
+    sv.onclick = function () { persist(prog, item, e); savePR(item, e); render(); };
     nr.appendChild(sv);
-  } else if (cmp.dir < 0) nr.appendChild(el("span", "badge dn", "▼ ลดลง"));
+  }
   c.appendChild(nr);
   var row = el("div", "row");
   row.appendChild(stepper("w", "decimal", function (dir) { e.w = bumpW(e.w, dir); }));
   row.appendChild(stepper("r", "numeric", function (dir) { e.r = String(Math.max(0, (parseInt(e.r, 10) || 0) + dir)); }));
   var ok = el("button", "ok" + (e.d >= item.s ? " on" : e.d ? " part" : ""), item.s > 1 ? "✓ " + e.d + "/" + item.s : "✓");
   ok.onclick = function () {
-    var was = e.d, before = game();
+    var was = e.d;
     e.d = e.d >= item.s ? 0 : e.d + 1; // one tap per set; tap again when full to clear
     persist(prog, item, e);
     if (e.d < was) {
@@ -548,7 +517,6 @@ function card(prog, item) {
     var dayDone = PROGRAM[prog].ex.every(function (it) { return entryFor(prog, it, cur).d >= it.s; });
     if (dayDone) stopRest(); else startRest(prog, item.t); // no rest needed after the last set
     render();
-    afterTick(prog, item, before, { set: true, exDone: e.d >= item.s, dayDone: dayDone });
     if (!dayDone) alertPhone();
   };
   row.appendChild(ok);
@@ -608,115 +576,7 @@ function card(prog, item) {
   }
 }
 
-// ===== game: XP, level, streak, rewards (all derived from the log, nothing extra stored) =====
-var XP_SET = 10, XP_PR = 25, XP_DAY = 100, LV_XP = 300, lastBar = {};
-function itemOf(prog, name) { var P = PROGRAM[prog]; return P.ex && P.ex.filter(function (it) { return it.t === name; })[0]; }
-function dayStats(k, prog) {
-  var L = dp(k, prog), P = PROGRAM[prog], r = { sets: 0, pr: 0, done: false };
-  if (!L) return r;
-  if (P.cardio) { r.done = !!L.cardio; return r; }
-  if (!P.ex) return r;
-  P.ex.forEach(function (it) {
-    var e = L.ex[it.t]; if (!e) return;
-    r.sets += Math.min(it.s, e.d || 0);
-    if (e.d && compare(prog, it, k, e).dir > 0) r.pr++;
-  });
-  r.done = P.ex.every(function (it) { return L.ex[it.t] && L.ex[it.t].d >= it.s; });
-  return r;
-}
-function trained(k) { // anything ticked on that date, any program
-  var L = db.log[k]; if (!L) return false;
-  return Object.keys(L.p).some(function (pg) { var x = dp(k, pg); return x.cardio || Object.keys(x.ex).some(function (n) { return x.ex[n].d > 0; }); });
-}
-function game() {
-  var xp = 0;
-  Object.keys(db.log).forEach(function (k) { Object.keys(db.log[k].p).forEach(function (pg) {
-    var st = dayStats(k, pg); xp += st.sets * XP_SET + st.pr * XP_PR + (st.done ? XP_DAY : 0);
-  }); });
-  // streak: consecutive training days done; rest days don't break it, today doesn't count against you yet
-  var streak = 0, k = TODAY;
-  if (!trained(k)) k = shift(k, -1);
-  for (var n = 0; n < 400; n++, k = shift(k, -1)) {
-    if (trained(k)) { streak++; continue; }
-    if (PROGRAM[weekdayOf(k)].rest) continue;
-    break;
-  }
-  return { xp: xp, lv: Math.floor(xp / LV_XP) + 1, into: xp % LV_XP, streak: streak };
-}
-function gameHeader() {
-  var g = game(), box = el("div"), row = el("div", "game");
-  row.appendChild(el("span", "lv", "Lv " + g.lv));
-  row.appendChild(el("span", null, g.xp.toLocaleString("en-US") + " XP"));
-  row.appendChild(el("span", "fire", "🔥 " + g.streak));
-  box.appendChild(row);
-  var lb = el("div", "lvb"), li = el("i"); li.style.width = g.into / LV_XP * 100 + "%"; lb.appendChild(li); box.appendChild(lb);
-  return box;
-}
-function floatText(x, y, text, gold) {
-  var t = el("div", "xp" + (gold ? " gold" : ""), text);
-  t.style.left = x + "px"; t.style.top = y + "px";
-  document.body.appendChild(t); setTimeout(function () { t.remove(); }, 1200);
-}
-function afterTick(prog, item, before, ev) {
-  try { if (navigator.vibrate) navigator.vibrate(ev.dayDone ? [60, 40, 60, 40, 200] : ev.exDone ? [40, 30, 80] : 25); } catch (e) {}
-  var after = game(), gained = after.xp - before.xp;
-  var c = item ? document.querySelector('.card[data-i="' + PROGRAM[prog].ex.indexOf(item) + '"]') : document.querySelector(".card");
-  var btn = c && c.querySelector(".ok");
-  if (btn) {
-    btn.classList.add("pop");
-    var r = btn.getBoundingClientRect();
-    if (gained > 0) floatText(r.left + r.width / 2, r.top - 4, "+" + gained + " XP");
-    if (ev.exDone) {
-      c.classList.add("win");
-      var cr = c.getBoundingClientRect();
-      burst(cr.left + cr.width / 2, cr.top + cr.height / 2, 60);
-      if (item && compare(prog, item, cur, entryFor(prog, item, cur)).dir > 0) {
-        setTimeout(function () { floatText(cr.left + cr.width / 2, cr.top + 10, "▲ PR!", true); burst(cr.left + cr.width / 2, cr.top + 20, 40, true); }, 250);
-      }
-    }
-  }
-  if (after.lv > before.lv) {
-    var lv = document.getElementById("lvl"); lv.textContent = "LEVEL " + after.lv + " ⭐";
-    lv.className = ""; void lv.offsetWidth; lv.className = "on";
-  }
-  if (ev.dayDone) setTimeout(function () { celebrate(prog, gained, after); }, ev.exDone ? 500 : 0);
-}
-function celebrate(prog, gained, g) {
-  var st = dayStats(cur, prog), box = document.getElementById("celst"); box.innerHTML = "";
-  document.getElementById("celwk").style.display = prog === "SUN" || weekdayOf(cur) === "SUN" ? "" : "none";
-  var dayXp = st.sets * XP_SET + st.pr * XP_PR + (st.done ? XP_DAY : 0);
-  [[st.sets || "✓", "sets"], ["▲ " + st.pr, "PR"], ["+" + dayXp, "XP"], ["🔥 " + g.streak, "streak"]].forEach(function (x) {
-    var d = el("div"); d.appendChild(el("b", null, String(x[0]))); d.appendChild(document.createTextNode(x[1])); box.appendChild(d);
-  });
-  document.getElementById("cel").className = "on";
-  var w = window.innerWidth;
-  for (var i = 0; i < 5; i++) (function (i) { setTimeout(function () { burst(w * (0.15 + 0.175 * i), 80, 70, i % 2 === 0); }, i * 180); })(i);
-}
-
-// tiny confetti engine (canvas, no library)
-var fx = null, parts = [], fxOn = false;
-function burst(x, y, n, gold) {
-  fx = fx || document.getElementById("fx");
-  var cols = gold ? ["#e3b341", "#f0c75e", "#fff2b3", "#ff8b3d"] : ["#3fb950", "#2f81f7", "#e3b341", "#f778ba", "#a371f7", "#ff8b3d"];
-  for (var i = 0; i < n; i++) {
-    var a = Math.random() * Math.PI * 2, v = 4 + Math.random() * 7;
-    parts.push({ x: x, y: y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 5, r: Math.random() * 6.28, vr: (Math.random() - .5) * .4,
-      w: 6 + Math.random() * 6, h: 4 + Math.random() * 4, c: cols[i % cols.length], life: 70 + Math.random() * 40 });
-  }
-  if (!fxOn) { fxOn = true; requestAnimationFrame(fxLoop); }
-}
-function fxLoop() {
-  var dpr = window.devicePixelRatio || 1, W = window.innerWidth, H = window.innerHeight;
-  if (fx.width !== W * dpr || fx.height !== H * dpr) { fx.width = W * dpr; fx.height = H * dpr; }
-  var g = fx.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
-  parts = parts.filter(function (p) { return --p.life > 0 && p.y < H + 40; });
-  parts.forEach(function (p) {
-    p.vy += 0.28; p.vx *= 0.985; p.x += p.vx; p.y += p.vy; p.r += p.vr;
-    g.save(); g.translate(p.x, p.y); g.rotate(p.r); g.globalAlpha = Math.min(1, p.life / 30);
-    g.fillStyle = p.c; g.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); g.restore();
-  });
-  if (parts.length) requestAnimationFrame(fxLoop); else { fxOn = false; g.clearRect(0, 0, W, H); }
-}
+var lastBar = {};
 
 // ===== weekly review (split = TUE…SUN; a week runs MON→SUN) =====
 var TRAIN = ["TUE", "WED", "FRI", "SAT"], wkStart = null;
@@ -765,7 +625,11 @@ function weekData(ws) {
     out.sets += got; out.planned += tot;
     out.days.push({ prog: pg, got: got, tot: tot, when: when });
   });
-  Object.keys(db.prs || {}).forEach(function (b) { (db.prs[b] || []).forEach(function (x) { if (x.at >= ws && x.at <= we) out.prs.push({ base: b, w: x.w, r: x.r, at: x.at }); }); });
+  // PRs = saves that went up vs the save before them (saves can also be a deliberate step down)
+  Object.keys(db.prs || {}).forEach(function (b) { var L = db.prs[b] || []; L.forEach(function (x, i) {
+    var pv = L[i - 1], up = !pv || wSum(x.w) > wSum(pv.w) || (wSum(x.w) === wSum(pv.w) && +x.r > +pv.r);
+    if (up && x.at >= ws && x.at <= we) out.prs.push({ base: b, w: x.w, r: x.r, at: x.at });
+  }); });
   // stuck: same weight in the last 3 logged sessions up to this week
   var seen = {};
   out.rows.forEach(function (row) {
@@ -778,7 +642,7 @@ function weekData(ws) {
   return out;
 }
 function weekText(W) {
-  var o = [], g = game();
+  var o = [];
   o.push("# Gym week " + wkLabel(W.ws) + " — ช่วยวิเคราะห์หน่อย");
   o.push("");
   o.push("ช่วยวิเคราะห์การเทรนสัปดาห์นี้ของผม: อะไรดีขึ้น อะไรค้าง ท่าไหนควรเพิ่มน้ำหนักสัปดาห์หน้า (บอกน้ำหนักที่แนะนำ) volume/recovery โอเคไหม และสรุปข้อแนะนำสั้นๆ 3–5 ข้อ จำข้อมูลนี้ไว้เพื่อให้รู้จักผมมากขึ้นทุกสัปดาห์");
@@ -796,7 +660,6 @@ function weekText(W) {
   o.push("- PR ที่เซฟสัปดาห์นี้: " + (W.prs.length ? W.prs.map(function (x) { return x.base + " " + x.w + "×" + x.r + " (" + x.at + ")"; }).join(", ") : "ไม่มี"));
   o.push("- ได้ 11+ reps (ควรเพิ่มน้ำหนัก): " + (W.bump.join(", ") || "ไม่มี"));
   o.push("- น้ำหนักเท่าเดิม 3 ครั้งติด: " + (W.stuck.join(", ") || "ไม่มี"));
-  o.push("- Level " + g.lv + " · " + g.xp + " XP · streak " + g.streak + " วัน");
   W.days.forEach(function (d) {
     o.push(""); o.push("## " + PROGRAM[d.prog].label + (d.when ? " — " + d.when : " — ไม่ได้เล่น"));
     o.push(""); o.push("| ท่า | สัปดาห์นี้ (kg×reps) | ครั้งก่อน | เปลี่ยน | เซ็ต | โน้ต |"); o.push("|---|---|---|---|---|---|");
@@ -1063,8 +926,6 @@ document.getElementById("prev").onclick = function () { goDate(shift(cur, -1)); 
 document.getElementById("next").onclick = function () { goDate(shift(cur, 1)); };
 document.getElementById("dlabel").onclick = function () { goDate(TODAY); };
 document.getElementById("tstop").onclick = stopRest;
-document.getElementById("celok").onclick = function () { document.getElementById("cel").className = ""; };
-document.getElementById("celwk").onclick = function () { document.getElementById("cel").className = ""; openWeek(weekOf(cur)); };
 document.getElementById("wkBtn").onclick = function () { openWeek(weekOf(cur)); };
 document.getElementById("wkClose").onclick = function () { document.getElementById("wk").className = ""; };
 document.getElementById("wkPrev").onclick = function () { openWeek(shift(wkStart, -7)); };
