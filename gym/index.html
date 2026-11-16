@@ -9,7 +9,7 @@
 <style>
 :root{color-scheme:dark}
 *{box-sizing:border-box}
-body{margin:0;background:#0e1116;color:#e6edf3;font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans Thai",sans-serif;padding:16px 16px 60px}
+body{margin:0;background:#0e1116;color:#e6edf3;font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans Thai",sans-serif;padding:16px 16px 130px}
 .wrap{max-width:760px;margin:0 auto}
 a{color:#2f81f7;text-decoration:none}
 .top{display:flex;align-items:center;justify-content:space-between;gap:10px}
@@ -46,9 +46,34 @@ input[type=date]{background:#0b0e13;border:1px solid #30363d;border-radius:8px;p
 .stp input{flex:1;min-width:0;width:100%;background:none;border:0;text-align:center;padding:8px 0;font-variant-numeric:tabular-nums;font-weight:600}
 .stp input:focus{outline:none;background:#101722}
 .stp .u{font-size:11px;color:#6e7681;align-self:center;padding-right:6px}
-.ok{height:100%;font-size:16px;padding:0}
+.ok{height:44px;font-size:20px;padding:0;border-radius:10px;border:2px solid #30363d;background:none;color:#484f58}
 .ok.on{background:#238636;border-color:#238636;color:#fff}
-.tag{grid-column:2/4;font-size:11.5px;margin-top:-3px;font-variant-numeric:tabular-nums}
+.set.nxt .ok{border-color:#2f81f7;color:#2f81f7}
+.set.nxt .stp{border-color:#2f81f7}
+.set.done .stp{opacity:.5}
+.set.done .i{color:#3fb950;font-weight:700}
+.set.nxt .i{color:#2f81f7;font-weight:700}
+.th{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.chip{flex-shrink:0;font-size:12px;font-weight:600;padding:2px 9px;border-radius:20px;background:#21262d;color:#8b949e;font-variant-numeric:tabular-nums}
+.chip.part{background:#2f81f71f;color:#58a6ff}
+.chip.full{background:#2386362e;color:#3fb950}
+.card.cur{border-color:#2f81f7}
+.dots{display:flex;gap:4px;margin-top:6px}
+.dots i{width:18px;height:6px;border-radius:3px;background:#30363d}
+.dots i.d{background:#3fb950}.dots i.n{background:#2f81f7}
+#timer{position:fixed;left:0;right:0;bottom:0;background:#161b22;border-top:1px solid #30363d;padding:10px 16px calc(10px + env(safe-area-inset-bottom));display:none;z-index:9}
+#timer.on{display:block}
+#timer .in{max-width:760px;margin:0 auto;display:flex;align-items:center;gap:12px}
+#timer .clk{font-size:34px;font-weight:700;font-variant-numeric:tabular-nums;color:#d29922;min-width:96px;letter-spacing:.02em}
+#timer.ready .clk{color:#3fb950}
+#timer .tx{flex:1;min-width:0;font-size:12.5px;color:#8b949e;line-height:1.35}
+#timer .tx b{color:#e6edf3;display:block;font-size:13.5px}
+#timer .tx span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#timer .pb{height:4px;background:#30363d;border-radius:2px;margin-top:6px;overflow:hidden}
+#timer .pb i{display:block;height:100%;background:#d29922;width:0}
+#timer.ready .pb i{background:#3fb950}
+.ok.on{background:#238636;border-color:#238636;color:#fff}
+.tag{grid-column:2/5;font-size:11.5px;margin-top:-3px;font-variant-numeric:tabular-nums}
 .tag .lo{color:#f85149}.tag .in{color:#3fb950}.tag .hi{color:#f0883e}.tag .eq{color:#8b949e}
 .hist{margin-top:10px;border-top:1px solid #21262d;padding-top:6px;font-size:12.5px;color:#8b949e}
 .hist div{display:flex;justify-content:space-between;gap:10px;padding:3px 0;border-bottom:1px solid #1b2028;font-variant-numeric:tabular-nums}
@@ -80,6 +105,12 @@ input[type=date]{background:#0b0e13;border:1px solid #30363d;border-radius:8px;p
     <span>ข้อมูลอยู่ในเบราว์เซอร์นี้เท่านั้น — Export เก็บไว้เป็นระยะ</span>
   </div>
 </div>
+
+<div id="timer"><div class="in">
+  <div class="clk" id="clk">0:00</div>
+  <div class="tx"><b id="tst">พัก</b><span id="tlast"></span><span id="tnext"></span><div class="pb"><i id="tpb"></i></div></div>
+  <button id="tstop">หยุด</button>
+</div></div>
 
 <script>
 // ===== PROGRAM — ชื่อและลำดับตามที่เขียนไว้ ห้ามแก้ =====
@@ -237,21 +268,84 @@ function render() {
   }
 
   var doneSets = 0, total = 0;
+  nextUp = findNext();
   P.ex.forEach(function (item) {
     var r = setsFor(prog, item, cur);
     total += r.sets.length; doneSets += r.sets.filter(function (s) { return s.done; }).length;
     list.appendChild(card(prog, item, r.sets));
   });
-  document.getElementById("cnt").textContent = "เสร็จ " + doneSets + "/" + total + " เซ็ต";
+  document.getElementById("cnt").textContent = doneSets === total ? "ครบทุกเซ็ตแล้ว 🎉" : "เสร็จ " + doneSets + "/" + total + " เซ็ต · เหลือ " + (total - doneSets);
+  updateTimer();
 }
+
+// first set not ticked yet, in program order
+var nextUp = null;
+function findNext() {
+  var P = PROGRAM[progOf(cur)];
+  if (!P.ex) return null;
+  for (var a = 0; a < P.ex.length; a++) {
+    var ss = setsFor(progOf(cur), P.ex[a], cur).sets;
+    for (var b = 0; b < ss.length; b++) if (!ss[b].done) return { t: P.ex[a].t, i: b, n: ss.length, w: ss[b].w, r: ss[b].r };
+  }
+  return null;
+}
+
+// ===== rest timer: counts UP from 0:00 after each ✓, never stops by itself =====
+var REST_GOAL = 180, TKEY = "gym.timer";
+var timer = null;
+try { timer = JSON.parse(localStorage.getItem(TKEY)); } catch (e) {}
+var audio = null, beeped = false;
+function startRest(id, title, i, n) {
+  try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch (e) {}
+  timer = { id: id, start: Date.now(), last: title + " · เซ็ต " + (i + 1) + "/" + n };
+  beeped = false;
+  try { localStorage.setItem(TKEY, JSON.stringify(timer)); } catch (e) {}
+}
+function stopRest() { timer = null; try { localStorage.removeItem(TKEY); } catch (e) {} updateTimer(); }
+function beep() {
+  try { if (navigator.vibrate) navigator.vibrate([200, 100, 200]); } catch (e) {}
+  if (!audio) return;
+  try {
+    [0, 0.25].forEach(function (t) {
+      var o = audio.createOscillator(), g = audio.createGain();
+      o.frequency.value = 880; o.connect(g); g.connect(audio.destination);
+      g.gain.setValueAtTime(0.25, audio.currentTime + t); g.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + t + 0.2);
+      o.start(audio.currentTime + t); o.stop(audio.currentTime + t + 0.2);
+    });
+  } catch (e) {}
+}
+function updateTimer() {
+  var box = document.getElementById("timer");
+  if (!timer) { box.className = ""; return; }
+  var sec = Math.max(0, Math.floor((Date.now() - timer.start) / 1000));
+  var ready = sec >= REST_GOAL;
+  if (ready && !beeped) { beeped = true; if (sec < REST_GOAL + 3) beep(); }
+  box.className = "on" + (ready ? " ready" : "");
+  var m = Math.floor(sec / 60), ss = sec % 60;
+  document.getElementById("clk").textContent = m + ":" + (ss < 10 ? "0" : "") + ss;
+  document.getElementById("tst").textContent = ready ? "ครบ 3 นาที · พร้อมก็ไปเลย ✓" : "กำลังพัก · เป้า 3:00";
+  document.getElementById("tlast").textContent = "เสร็จ: " + timer.last;
+  document.getElementById("tnext").textContent = nextUp ? "ถัดไป: " + nextUp.t + " · เซ็ต " + (nextUp.i + 1) + "/" + nextUp.n + (nextUp.r ? " (" + nextUp.w + " × " + nextUp.r + ")" : "") : "ครบทุกเซ็ตแล้ว 🎉";
+  document.getElementById("tpb").style.width = Math.min(100, sec / REST_GOAL * 100) + "%";
+}
+setInterval(updateTimer, 250);
+document.addEventListener("visibilitychange", updateTimer);
 
 function card(prog, item, sets) {
   var c = el("div", "card");
   var last = lastFor(prog, item.t, cur);
+  var nDone = sets.filter(function (s) { return s.done; }).length;
+  var th = el("div", "th");
   var ti = el("div", "ti", item.t); ti.title = "แตะเพื่อดูประวัติ";
   ti.onclick = function () { openHist[item.t] = !openHist[item.t]; render(); };
-  c.appendChild(ti);
+  th.appendChild(ti);
+  th.appendChild(el("span", "chip" + (nDone === sets.length ? " full" : nDone ? " part" : ""),
+    nDone === sets.length ? "✓ ครบ " + sets.length + " เซ็ต" : nDone ? "เสร็จ " + nDone + "/" + sets.length + " · เหลือ " + (sets.length - nDone) : "0/" + sets.length + " เซ็ต"));
+  c.appendChild(th);
+  var dots = el("div", "dots"), firstOpen = nextUp && nextUp.t === item.t ? nextUp.i : -1;
+  sets.forEach(function (s, i) { dots.appendChild(el("i", s.done ? "d" : i === firstOpen ? "n" : "")); });
   c.appendChild(el("div", "pl", "— " + item.p));
+  c.appendChild(dots);
   c.appendChild(el("div", "last", last ? "ครั้งก่อน " + shortLabel(last.day) + ": " + setsText(last.sets) : "ยังไม่มีประวัติ — ใช้ค่าจากโปรแกรม"));
 
   // progression hint from last time
@@ -273,12 +367,19 @@ function card(prog, item, sets) {
   ["", "kg", "reps", "เสร็จ"].forEach(function (t) { ch.appendChild(el("div", null, t)); });
   c.appendChild(ch);
   sets.forEach(function (s, i) {
-    var row = el("div", "set");
+    var row = el("div", "set" + (s.done ? " done" : i === firstOpen ? " nxt" : ""));
     row.appendChild(el("div", "i", String(i + 1)));
     row.appendChild(stepper(s, "w", "kg", function (dir) { s.w = bumpW(s.w, dir); }));
     row.appendChild(stepper(s, "r", "reps", function (dir) { s.r = String(Math.max(0, (parseInt(s.r, 10) || 0) + dir)); }));
     var ok = el("button", "ok" + (s.done ? " on" : ""), "✓");
-    ok.onclick = function () { s.done = !s.done; persist(prog, item, sets); render(); };
+    ok.setAttribute("aria-label", s.done ? "ยกเลิกเซ็ตนี้" : "เล่นเซ็ตนี้เสร็จแล้ว");
+    ok.onclick = function () {
+      s.done = !s.done; persist(prog, item, sets);
+      var id = cur + "|" + item.t + "|" + i;
+      if (s.done) startRest(id, item.t, i, sets.length);
+      else if (timer && timer.id === id) stopRest();
+      render();
+    };
     row.appendChild(ok);
     var tag = el("div", "tag");
     tag.innerHTML = tagHtml(s, last && (last.sets[i] || last.sets[0]));
@@ -300,7 +401,8 @@ function card(prog, item, sets) {
     }
   });
 
-  if (sets.length && sets.every(function (s) { return s.done; })) c.classList.add("all");
+  if (sets.length && nDone === sets.length) c.classList.add("all");
+  else if (nextUp && nextUp.t === item.t) c.classList.add("cur");
   if (openHist[item.t]) {
     var h = el("div", "hist"), rows = histFor(prog, item.t);
     if (!rows.length) h.textContent = "ยังไม่มีประวัติ";
@@ -342,6 +444,7 @@ function switchProg(d) {
 document.getElementById("day").onchange = function (e) { if (e.target.value) { cur = e.target.value; render(); } };
 document.getElementById("prev").onclick = function () { cur = shift(cur, -1); render(); };
 document.getElementById("next").onclick = function () { cur = shift(cur, 1); render(); };
+document.getElementById("tstop").onclick = stopRest;
 document.getElementById("today").onclick = function () { cur = TODAY; render(); };
 document.getElementById("exp").onclick = function () {
   var a = document.createElement("a");
