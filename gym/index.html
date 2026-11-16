@@ -373,7 +373,7 @@ function sendPush(delayed) {
   var q = "title=" + encodeURIComponent(delayed ? "ครบ 3 นาทีแล้ว ✓" : "ทดสอบแจ้งเตือน ✓") + "&priority=high&tags=muscle";
   if (delayed) q += "&delay=3m";
   if (/^https?:/.test(location.href)) q += "&click=" + encodeURIComponent(location.href.split("#")[0]);
-  return fetch("https://ntfy.sh/" + push.topic + "?" + q, { method: "POST", body: delayed ? nx : "ถ้าเห็นข้อความนี้ = ใช้ได้แล้ว" })
+  return fetch("https://ntfy.sh/" + push.topic + "?" + q, { method: "POST", keepalive: true, body: delayed ? nx : "ถ้าเห็นข้อความนี้ = ใช้ได้แล้ว" })
     .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return true; })
     .catch(function (e) { if (!delayed) alert("ส่งไม่ได้: " + e.message); return false; });
 }
@@ -501,8 +501,10 @@ function card(prog, item, sets) {
       if (s.done) startRest(id, item.t, i, sets.length);
       else if (timer && timer.id === id) stopRest();
       render();
-      if (s.done && push.on) sendPush(true);
-      if (s.done && ios.on) runShortcut();
+      if (!s.done) return;
+      // ntfy first: leaving for Shortcuts right away could cancel the request
+      var sent = push.on ? sendPush(true) : Promise.resolve();
+      if (ios.on) Promise.race([sent, new Promise(function (ok) { setTimeout(ok, 2500); })]).then(runShortcut);
     };
     row.appendChild(ok);
     var tag = el("div", "tag");
