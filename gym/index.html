@@ -160,6 +160,7 @@ button.muted{background:#3d1418;border-color:#7d2a30}
   </div>
   <div id="cfg">
     <div class="r"><button id="exp">Export</button><button id="imp">Import</button><span style="flex:1"></span><button id="fmute">🔔</button></div>
+    <div class="r"><button id="resetAll" style="color:#f85149">↺ รีเซ็ตน้ำหนัก/reps กลับค่าเดิม</button></div>
     <div class="r"><input type="checkbox" id="pushOn"> ntfy <input type="text" id="pushTopic" readonly><button id="pushCopy">copy</button><button id="pushTest">test</button></div>
     <div class="r"><input type="checkbox" id="iosOn"> Shortcuts <input type="text" id="iosName"><button id="iosTest">test</button></div>
     <div class="r"><span style="width:20px;text-align:center">☁️</span> GitHub <input type="password" id="ghTok" placeholder="token" autocomplete="off"><button id="ghSync">sync</button></div>
@@ -946,6 +947,13 @@ document.getElementById("pgo").onclick = function () {
   var c = document.querySelector(".card.cur"); if (c) c.scrollIntoView({ behavior: "smooth", block: "center" });
 };
 document.getElementById("cfgBtn").onclick = function () { document.getElementById("cfg").classList.toggle("on"); };
+// back to the program's starting numbers: clears every logged session and saved PR; notes and settings stay
+document.getElementById("resetAll").onclick = function () {
+  if (!confirm("ล้างน้ำหนัก/reps/✓ ที่บันทึกไว้ทั้งหมด และกลับเป็นค่าเดิมตามโปรแกรม?\n(โน้ตและการตั้งค่ายังอยู่)")) return;
+  stopRest();
+  db.log = {}; db.prs = {};
+  save(); render();
+};
 var pushOn = document.getElementById("pushOn"), pushTopic = document.getElementById("pushTopic");
 var iosOn = document.getElementById("iosOn"), iosName = document.getElementById("iosName");
 pushOn.checked = !!push.on; pushTopic.value = push.topic; iosOn.checked = !!ios.on; iosName.value = ios.name || "Gym Rest";
