@@ -202,7 +202,7 @@ button.muted{background:#3d1418;border-color:#7d2a30}
 var PROGRAM = {
   MON: { label: "MONDAY (REST)", rest: true },
   TUE: { label: "TUESDAY (UPPER)", ex: [
-    { t: "1. Machine Pec Ty Deck x2", s: 2, w: "50", r: "" },
+    { t: "1. Machine Pec Deck x2", s: 2, w: "50", r: "" },
     { t: "2. Incline Chest Press x2", s: 2, w: "50+15", r: "" },
     { t: "3. Lateral Raise x2", s: 2, w: "50", r: "7" },
     { t: "4. T-Bar Row x1", s: 1, w: "40", r: "5" },
@@ -252,7 +252,7 @@ var REP_MIN = 5, REP_MAX = 10, REP_BUMP = 11, REST_GOAL = 180;
 var KEY = "gym.v2";
 // renamed exercises: history logged under the old name moves to the new one
 var RENAMED = {
-  TUE: { "8. Cable Hammer Curl x1 (rest 2-3min)": "8. Cable Hammer Curl x1" },
+  TUE: { "8. Cable Hammer Curl x1 (rest 2-3min)": "8. Cable Hammer Curl x1", "1. Machine Pec Ty Deck x2": "1. Machine Pec Deck x2" },
   WED: { "6. Abs Crunch x2": "5. Abs Crunch x2" },
   FRI: {
     "3. Machine Pec Deck x2": "1. Machine Pec Deck x2", "4. Incline Chest Press x2": "2. Incline Chest Press x2",
@@ -293,6 +293,10 @@ function migrate(d) {
       delete L.ex[o];
     });
   }); });
+  Object.keys(RENAMED).forEach(function (pg) { Object.keys(RENAMED[pg]).forEach(function (o) {
+    var ok = pg + "|" + o, nk = pg + "|" + RENAMED[pg][o];
+    if (d.notes && ok in d.notes) { if (!(nk in d.notes)) d.notes[nk] = d.notes[ok]; delete d.notes[ok]; }
+  }); });
   return d;
 }
 function load() {
@@ -306,7 +310,7 @@ if (db.resetOnce !== RESET_ONCE) { db.log = {}; db.prs = {}; db.resetOnce = RESE
 // notes written next to each exercise in the original program text (verbatim). Seeded once;
 // notes the user already has are never overwritten, and edits/clears afterwards stick.
 var SEED_NOTES = {
-  "TUE|1. Machine Pec Ty Deck x2": "50kg / reps",
+  "TUE|1. Machine Pec Deck x2": "50kg / reps",
   "TUE|2. Incline Chest Press x2": "50kg /  reps",
   "TUE|3. Lateral Raise x2": "50 kg / 7 reps",
   "TUE|4. T-Bar Row x1": "40 kg / 5 reps",
@@ -387,7 +391,7 @@ function hasReps(e) { return e && e.r !== "" && e.r != null; }
 // ===== saved PRs, shared by the same exercise on every day =====
 // "3. Lateral Raise x2" (TUE) and "4. Lateral Raise x2" (FRI) are one exercise: number, 🔺, (notes) and xN are ignored.
 // names written differently in the program but meaning the same exercise (display names stay as written)
-var SAME_AS = { "machine pec ty deck": "machine pec deck" };
+var SAME_AS = {};
 function baseName(t) {
   var b = String(t).replace(/^\s*\d+\.\s*/, "").replace(/🔺/g, "").replace(/\([^)]*\)/g, " ").trim().replace(/\s+x\d+$/i, "").replace(/\s+/g, " ").trim().toLowerCase();
   return SAME_AS[b] || b;
