@@ -9,57 +9,58 @@
 <style>
 :root{color-scheme:dark}
 *{box-sizing:border-box}
-body{margin:0;background:#0e1116;color:#e6edf3;font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans Thai",sans-serif;padding:18px 16px 60px}
+body{margin:0;background:#0e1116;color:#e6edf3;font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans Thai",sans-serif;padding:16px 16px 60px}
 .wrap{max-width:760px;margin:0 auto}
 a{color:#2f81f7;text-decoration:none}
-.top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
-h1{font-size:19px;margin:0;font-weight:650}
-.meta{color:#8b949e;font-size:12.5px;margin:4px 0 14px}
-.meta b{color:#adbac7;font-weight:600}
-.bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+h1{font-size:18px;margin:0;font-weight:650}
+.meta{color:#8b949e;font-size:12.5px;margin:4px 0 12px}
+.meta b{color:#adbac7}
 input,button{font:inherit;color:inherit}
-input[type=date],input[type=text],input[type=number]{background:#0b0e13;border:1px solid #30363d;border-radius:8px;padding:7px 9px;min-width:0}
-input:focus{outline:none;border-color:#2f81f7}
-button{background:#21262d;border:1px solid #30363d;border-radius:8px;padding:7px 12px;cursor:pointer}
+button{background:#21262d;border:1px solid #30363d;border-radius:8px;padding:6px 11px;cursor:pointer;touch-action:manipulation}
 button:active{background:#30363d}
-button.pri{background:#1f6feb;border-color:#1f6feb;color:#fff}
-button.ghost{background:none;border-color:transparent;color:#8b949e;padding:4px 8px}
-.src{font-size:12.5px;color:#8b949e;margin-bottom:10px}
-.card{border:1px solid #21262d;border-radius:12px;background:#151a21;padding:12px;margin-bottom:10px}
-.card.done{border-color:#238636}
-.ch{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
-.nm{font-weight:650;font-size:16px;cursor:pointer}
-.last{color:#8b949e;font-size:12.5px;margin-top:2px}
-.tgt{font-size:12.5px;color:#d29922;margin-top:2px}
-.sets{margin-top:10px}
-.set{display:grid;grid-template-columns:28px 1fr 14px 1fr 32px;gap:6px;align-items:center;margin-bottom:6px}
-.set .i{color:#6e7681;font-size:12px;text-align:center;font-variant-numeric:tabular-nums}
-.set .x{color:#6e7681;text-align:center}
-.set input{width:100%;text-align:center;font-variant-numeric:tabular-nums}
-.unit{font-size:11px;color:#6e7681}
-.row{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-top:4px}
-.sum{font-size:12.5px;color:#8b949e;font-variant-numeric:tabular-nums}
-.up{color:#3fb950}.dn{color:#f85149}.eq{color:#8b949e}
-.hist{margin-top:10px;border-top:1px solid #21262d;padding-top:8px;font-size:12.5px;color:#8b949e}
-.hist table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
-.hist td{padding:3px 4px;border-bottom:1px solid #1b2028;vertical-align:top}
-.hist td:first-child{white-space:nowrap;color:#adbac7}
-svg{display:block;width:100%;height:70px;margin:4px 0 8px}
-.add{display:flex;gap:8px;margin:14px 0}
-.add input{flex:1}
-.empty{color:#6e7681;padding:20px 0}
+button.ghost{background:none;border-color:transparent;color:#8b949e}
+.bar{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+input[type=date]{background:#0b0e13;border:1px solid #30363d;border-radius:8px;padding:6px 8px;flex:1;min-width:0}
+.tabs{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:12px}
+.tabs button{padding:6px 0;font-size:13px}
+.tabs button.on{background:#1f6feb;border-color:#1f6feb;color:#fff}
+.tabs button.td{box-shadow:inset 0 -2px 0 #3fb950}
+.rule{font-size:12.5px;color:#8b949e;background:#151a21;border:1px solid #21262d;border-radius:10px;padding:8px 10px;margin-bottom:12px}
+.rule b{color:#e6edf3}
+.dayh{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:#8b949e;margin:6px 0 8px;font-weight:600}
+.dnote{font-size:13px;color:#d29922;margin:-4px 0 10px}
+.card{border:1px solid #21262d;border-radius:12px;background:#151a21;padding:11px 12px;margin-bottom:10px}
+.card.all{border-color:#238636}
+.ti{font-weight:650;cursor:pointer}
+.pl{color:#6e7681;font-size:12.5px}
+.last{color:#8b949e;font-size:12.5px;margin-top:3px}
+.sug{font-size:12.5px;margin-top:3px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.sug.up{color:#f0883e}.sug.keep{color:#d29922}
+.sug button{font-size:12px;padding:3px 9px;border-color:#f0883e;color:#f0883e;background:none}
+.set{display:grid;grid-template-columns:20px 1fr 1fr 40px;gap:6px;align-items:center;margin-top:6px}
+.colh{display:grid;grid-template-columns:20px 1fr 1fr 40px;gap:6px;margin-top:8px;font-size:11px;color:#6e7681;text-align:center}
+.set .i{color:#6e7681;font-size:12px;text-align:center}
+.stp{display:flex;align-items:stretch;border:1px solid #30363d;border-radius:8px;overflow:hidden;background:#0b0e13}
+.stp button{border:0;border-radius:0;background:#1b2028;padding:0 9px;font-size:17px;color:#adbac7}
+.stp input{flex:1;min-width:0;width:100%;background:none;border:0;text-align:center;padding:8px 0;font-variant-numeric:tabular-nums;font-weight:600}
+.stp input:focus{outline:none;background:#101722}
+.stp .u{font-size:11px;color:#6e7681;align-self:center;padding-right:6px}
+.ok{height:100%;font-size:16px;padding:0}
+.ok.on{background:#238636;border-color:#238636;color:#fff}
+.tag{grid-column:2/4;font-size:11.5px;margin-top:-3px;font-variant-numeric:tabular-nums}
+.tag .lo{color:#f85149}.tag .in{color:#3fb950}.tag .hi{color:#f0883e}.tag .eq{color:#8b949e}
+.hist{margin-top:10px;border-top:1px solid #21262d;padding-top:6px;font-size:12.5px;color:#8b949e}
+.hist div{display:flex;justify-content:space-between;gap:10px;padding:3px 0;border-bottom:1px solid #1b2028;font-variant-numeric:tabular-nums}
+.rest{color:#6e7681;padding:30px 0;text-align:center;font-size:16px}
+.cardio{display:flex;align-items:center;justify-content:space-between}
 .foot{margin-top:24px;display:flex;gap:8px;flex-wrap:wrap;color:#6e7681;font-size:12px;align-items:center}
-.toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#238636;color:#fff;padding:8px 14px;border-radius:20px;font-size:13px;opacity:0;transition:opacity .3s;pointer-events:none}
-.toast.on{opacity:1}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <div class="top">
-    <h1>🏋️ Gym · Progressive Overload</h1>
-    <a href="../">← ตาราง</a>
-  </div>
-  <div class="meta"><b id="dlabel">—</b> · บันทึกอัตโนมัติในเครื่องนี้</div>
+  <div class="top"><h1>🏋️ Progressive Overload</h1><a href="../">← ตาราง</a></div>
+  <div class="meta"><b id="dlabel">—</b> · <span id="cnt"></span></div>
 
   <div class="bar">
     <button id="prev" aria-label="วันก่อน">‹</button>
@@ -67,15 +68,10 @@ svg{display:block;width:100%;height:70px;margin:4px 0 8px}
     <button id="next" aria-label="วันถัดไป">›</button>
     <button id="today" class="ghost">วันนี้</button>
   </div>
+  <div class="tabs" id="tabs"></div>
+  <div class="rule">เรนจ์ <b>5–10 reps</b> · เล่นได้ <b>11 reps</b> เมื่อไหร่ = ครั้งหน้า<b>เพิ่มน้ำหนัก</b> · กด ✓ เมื่อทำเซ็ตนั้นเสร็จ (ตัวเลขเดิมจากครั้งก่อนเติมให้แล้ว)</div>
 
-  <div id="src" class="src"></div>
-  <div id="list" class="empty">กำลังโหลด…</div>
-
-  <div class="add">
-    <input type="text" id="newEx" placeholder="เพิ่มท่า เช่น Bench Press" autocomplete="off" list="exNames">
-    <datalist id="exNames"></datalist>
-    <button class="pri" id="addBtn">เพิ่ม</button>
-  </div>
+  <div id="list"></div>
 
   <div class="foot">
     <button id="exp">Export ข้อมูล</button>
@@ -84,340 +80,284 @@ svg{display:block;width:100%;height:70px;margin:4px 0 8px}
     <span>ข้อมูลอยู่ในเบราว์เซอร์นี้เท่านั้น — Export เก็บไว้เป็นระยะ</span>
   </div>
 </div>
-<div class="toast" id="toast"></div>
 
 <script>
-var TZ = "Asia/Bangkok";
-var KEY = "gym.v1";
-var STEP_KG = 2.5; // weight jump suggested once all sets hit their reps
-var API = "https://script.google.com/macros/s/AKfycbz7tH4iscyXCdtJB4T8GL34Ppp9PuEuUIsw8MjQ-ii3_4Ie6DvusFw8PfhAZ8gjKEJA/exec?format=json&t=";
-var GYM_RE = /gym|ยิม|เวท|workout|ออกกำลัง|fitness|weight/i;
+// ===== PROGRAM — ชื่อและลำดับตามที่เขียนไว้ ห้ามแก้ =====
+// t = ชื่อ (verbatim), p = ข้อความน้ำหนัก/reps ตั้งต้น (verbatim), s = จำนวนเซ็ต, w/r = ค่าเริ่มต้นตอนยังไม่มีประวัติ
+var PROGRAM = {
+  MON: { label: "MONDAY (REST)", rest: true },
+  TUE: { label: "TUESDAY (UPPER)", ex: [
+    { t: "1. Machine Pec Ty Deck x2", p: "50kg / reps", s: 2, w: "50", r: "" },
+    { t: "2. Incline Chest Press x2", p: "50kg /  reps", s: 2, w: "50", r: "" },
+    { t: "3. Lateral Raise x2", p: "50 kg / 7 reps", s: 2, w: "50", r: "7" },
+    { t: "4. T-Bar Row x1", p: "40 kg / 5 reps", s: 1, w: "40", r: "5" },
+    { t: "5. Lat Pulldown x1", p: "35 kg / ___ reps", s: 1, w: "35", r: "" },
+    { t: "6. Standing cable Curl x1 (rest 2-3min)", p: "13.75 kg / 7 reps", s: 1, w: "13.75", r: "7" },
+    { t: "7. 🔺Cable Tricep Extension x1 (rest 2-3min)", p: "11.25 kg / 7 reps", s: 1, w: "11.25", r: "7" },
+    { t: "8. Cable Hammer Curl x1 (rest 2-3min)", p: "13.6 kgเพิ่มนิดนึง / ___ reps", s: 1, w: "13.6", r: "" },
+    { t: "9. 🔺Cable Overhead Tricep Extension x1 (rest 2-3 min)", p: "13.75kg / reps", s: 1, w: "13.75", r: "" }
+  ]},
+  WED: { label: "WEDNESDAY (LOWER)", note: "พัก 3-5 นาที แล้วแต่จะพร้อมยัง", ex: [
+    { t: "1. Leg Extension x2", p: "90 kg+10ต้องเพิ่มอีก/ 6 reps", s: 2, w: "90", r: "6" },
+    { t: "2. Hack squat x2", p: "10kgข้างละ / 6 reps ลงให้สุดไม่สุดไม่นับ", s: 2, w: "10", r: "6" },
+    { t: "3. Hamstring Curl x2", p: "50 kg / 7 reps", s: 2, w: "50", r: "7" },
+    { t: "4. SLDL x2", p: "27.5 kgข้างละ / 8 reps พักเกิน 3 นาทีได้ gain binning by m", s: 2, w: "27.5", r: "8" },
+    { t: "6. Abs Crunch x2", p: "90 kg / 5 reps", s: 2, w: "90", r: "5" }
+  ]},
+  THU: { label: "THURSDAY (REST)", rest: true },
+  FRI: { label: "FRIDAY (PUSH)", ex: [
+    { t: "3. Machine Pec Deck x2", p: "30+15 kg / 9 reps", s: 2, w: "30+15", r: "9" },
+    { t: "4. Incline Chest Press x2", p: "50+15kg / 5 reps", s: 2, w: "50+15", r: "5" },
+    { t: "5. Shoulder Press x1", p: "50 kg / 4 reps", s: 1, w: "50", r: "4" },
+    { t: "6. Lateral Raise x2", p: "50 kg / 7 reps", s: 2, w: "50", r: "7" },
+    { t: "7. Cable Tricep Extension x1 (2 min)", p: "13.75 kg / reps", s: 1, w: "13.75", r: "" },
+    { t: "9. Cable Overhead Tricep Extension x1", p: "11.25 kg / 7 reps", s: 1, w: "11.25", r: "7" },
+    { t: "1. Standing Calf Raise x2", p: "70 kg / 10 reps", s: 2, w: "70", r: "10" },
+    { t: "2. Adductor x1", p: "50+15 kg / 7 reps", s: 1, w: "50+15", r: "7" }
+  ]},
+  SAT: { label: "SATURDAY (PULL)", ex: [
+    { t: "1. T-Bar Row x2", p: "37.5 / 8 reps", s: 2, w: "37.5", r: "8" },
+    { t: "2. Lat Pulldown x2", p: "35 / 9 reps", s: 2, w: "35", r: "9" },
+    { t: "3. Close-Grip Lat Row x2", p: "25 kg / 5 reps", s: 2, w: "25", r: "5" },
+    { t: "4. Rear delt ยืน x1", p: "8.75 kg / 8 reps", s: 1, w: "8.75", r: "8" },
+    { t: "5. Standing cable Curl x2", p: "13.75kg / 7 reps", s: 2, w: "13.75", r: "7" },
+    { t: "Cable Hammer Curl x1 (2 min)", p: "13.6 kgเพิ่มนิดนึง / ___ reps", s: 1, w: "13.6", r: "" },
+    { t: "7. Abs Crunch x2", p: "70+15 kg / 5 reps", s: 2, w: "70+15", r: "5" }
+  ]},
+  SUN: { label: "SUNDAY (CARDIO)", cardio: "1 hour" }
+};
+var ORDER = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
+var SHORT = { MON: "จ", TUE: "อ", WED: "พ", THU: "พฤ", FRI: "ศ", SAT: "ส", SUN: "อา" };
+var REP_MIN = 5, REP_MAX = 10, REP_BUMP = 11;
 
-// ---------- storage ----------
+// ===== storage =====
+var KEY = "gym.v2";
 function load() {
-  try {
-    var d = JSON.parse(localStorage.getItem(KEY));
-    if (d && d.log) return { exercises: d.exercises || [], log: d.log, plan: d.plan || {} };
-  } catch (e) {}
-  return { exercises: [], log: {}, plan: {} };
+  try { var d = JSON.parse(localStorage.getItem(KEY)); if (d && d.log) return d; } catch (e) {}
+  return { log: {} }; // log[date] = { prog: "TUE", ex: { "<title>": [{w,r,done}] }, cardio: bool }
 }
 var db = load();
-function save() {
-  try { localStorage.setItem(KEY, JSON.stringify(db)); }
-  catch (e) { toast("บันทึกไม่ได้: " + e.message); }
-}
+function save() { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) { alert("บันทึกไม่ได้: " + e.message); } }
 
-// ---------- dates (Bangkok) ----------
+// ===== dates (Bangkok) =====
+var TZ = "Asia/Bangkok";
 function dayKey(d) {
   var p = new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit" })
     .formatToParts(d).reduce(function (a, x) { a[x.type] = x.value; return a; }, {});
   return p.year + "-" + p.month + "-" + p.day;
 }
-function keyToDate(k) { return new Date(k + "T12:00:00+07:00"); }
-function shiftKey(k, n) { return dayKey(new Date(keyToDate(k).getTime() + n * 86400000)); }
-function longLabel(k) {
-  return new Intl.DateTimeFormat("th-TH", { timeZone: TZ, weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(keyToDate(k));
-}
-function shortLabel(k) {
-  return new Intl.DateTimeFormat("th-TH", { timeZone: TZ, weekday: "short", day: "numeric", month: "short" }).format(keyToDate(k));
-}
-var TODAY = dayKey(new Date());
-var cur = TODAY;
+function kDate(k) { return new Date(k + "T12:00:00+07:00"); }
+function shift(k, n) { return dayKey(new Date(kDate(k).getTime() + n * 86400000)); }
+function weekdayOf(k) { return ORDER[(kDate(k).getUTCDay() + 6) % 7]; }
+function longLabel(k) { return new Intl.DateTimeFormat("th-TH", { timeZone: TZ, weekday: "long", day: "numeric", month: "long" }).format(kDate(k)); }
+function shortLabel(k) { return new Intl.DateTimeFormat("th-TH", { timeZone: TZ, day: "numeric", month: "short" }).format(kDate(k)); }
+var TODAY = dayKey(new Date()), cur = TODAY;
+function progOf(k) { return (db.log[k] && db.log[k].prog) || weekdayOf(k); }
 
-// ---------- math ----------
-function num(v) { var n = parseFloat(v); return isFinite(n) ? n : 0; }
-function valid(s) { return s && num(s.w) >= 0 && num(s.r) > 0 && s.w !== "" && s.r !== ""; }
-function e1rm(w, r) { return r > 0 ? w * (1 + r / 30) : 0; } // Epley
-function stats(sets) {
-  var v = 0, best = 0, top = 0;
-  (sets || []).filter(valid).forEach(function (s) {
-    var w = num(s.w), r = num(s.r);
-    v += w * r; best = Math.max(best, e1rm(w, r)); top = Math.max(top, w);
-  });
-  return { vol: v, e1: best, top: top, n: (sets || []).filter(valid).length };
+// ===== weight helpers ("50+15" = 65 for comparing) =====
+function wSum(w) { return String(w || "").split("+").reduce(function (a, x) { var n = parseFloat(x); return a + (isFinite(n) ? n : 0); }, 0); }
+function fmt(n) { return String(Math.round(n * 100) / 100); }
+function stepFor(w) { return wSum(w) >= 20 ? 2.5 : 1.25; }
+// change the first number only — "+15" add-on stays as written
+function bumpW(w, dir) {
+  var s = String(w || "0"), m = s.match(/^\s*(\d+(?:\.\d+)?)(.*)$/);
+  if (!m) return s;
+  var v = Math.max(0, parseFloat(m[1]) + dir * stepFor(s));
+  return fmt(v) + m[2];
 }
-function fmt(n) { return (Math.round(n * 10) / 10).toString(); }
-function setsText(sets) {
-  return sets.filter(valid).map(function (s) { return fmt(num(s.w)) + "×" + num(s.r); }).join(", ");
-}
+function filled(s) { return s && s.r !== "" && s.r != null && wSum(s.w) >= 0; }
 
-// previous session (strictly before `k`) that has at least one valid set
-function lastSession(name, k) {
-  var days = Object.keys(db.log).filter(function (d) { return d < k; }).sort().reverse();
+// ===== history =====
+function lastFor(prog, title, before) {
+  var days = Object.keys(db.log).filter(function (d) { return d < before && db.log[d].prog === prog; }).sort().reverse();
   for (var i = 0; i < days.length; i++) {
-    var s = db.log[days[i]][name];
-    if (s && s.filter(valid).length) return { day: days[i], sets: s.filter(valid) };
+    var s = db.log[days[i]].ex && db.log[days[i]].ex[title];
+    if (s && s.some(filled)) return { day: days[i], sets: s };
   }
   return null;
 }
-function history(name) {
-  return Object.keys(db.log).sort().map(function (d) {
-    var s = (db.log[d][name] || []).filter(valid);
-    return s.length ? { day: d, sets: s, st: stats(s) } : null;
-  }).filter(Boolean);
+function histFor(prog, title) {
+  return Object.keys(db.log).filter(function (d) { return db.log[d].prog === prog && db.log[d].ex && db.log[d].ex[title] && db.log[d].ex[title].some(filled); })
+    .sort().reverse().map(function (d) { return { day: d, sets: db.log[d].ex[title] }; });
+}
+function setsText(sets) { return sets.filter(filled).map(function (s) { return s.w + "×" + s.r; }).join(", "); }
+
+// sets shown for this date: saved ones, else copied from last time, else program defaults
+function setsFor(prog, item, k) {
+  var saved = db.log[k] && db.log[k].prog === prog && db.log[k].ex && db.log[k].ex[item.t];
+  if (saved) return { sets: saved, saved: true };
+  var last = lastFor(prog, item.t, k), out = [];
+  for (var i = 0; i < item.s; i++) {
+    var src = last && (last.sets[i] || last.sets[last.sets.length - 1]);
+    out.push({ w: src ? src.w : item.w, r: src ? String(src.r) : item.r, done: false });
+  }
+  return { sets: out, saved: false };
+}
+function persist(prog, item, sets) {
+  if (!db.log[cur]) db.log[cur] = { prog: prog, ex: {} };
+  db.log[cur].prog = prog;
+  if (!db.log[cur].ex) db.log[cur].ex = {};
+  db.log[cur].ex[item.t] = sets;
+  save();
 }
 
-// Double progression: if every set last time matched the first set's reps at the same weight,
-// add weight; otherwise keep the weight and beat the reps.
-function target(last) {
-  if (!last) return null;
-  var s = last.sets, w = num(s[0].w), r = num(s[0].r);
-  var allHit = s.every(function (x) { return num(x.w) >= w && num(x.r) >= r; });
-  if (allHit) return { text: "ลอง " + fmt(w + STEP_KG) + " kg × " + r + "  หรือ  " + fmt(w) + " kg × " + (r + 1), w: w + STEP_KG, r: r };
-  var minR = Math.min.apply(null, s.map(function (x) { return num(x.r); }));
-  return { text: "ยังที่ " + fmt(w) + " kg — ทำให้ทุกเซ็ตได้ " + r + " ครั้ง (ครั้งก่อนต่ำสุด " + minR + ")", w: w, r: r };
-}
-
-// ---------- which exercises to show ----------
-function namesFor(k) {
-  var out = [];
-  function push(n) { if (n && out.indexOf(n) < 0) out.push(n); }
-  (db.plan[k] || []).forEach(push);
-  Object.keys(db.log[k] || {}).forEach(push);
-  if (!out.length && k === TODAY) db.exercises.forEach(push);
-  return out;
-}
-function rememberName(n) {
-  if (db.exercises.indexOf(n) < 0) db.exercises.push(n);
-}
-
-// ---------- calendar import ----------
-// Lines like "1. Bench Press 3x8 @60kg" -> "Bench Press"
-function cleanLine(line) {
-  return line
-    .replace(/^\s*[-•*·▪︎◦•]+\s*/, "")
-    .replace(/^\s*\d+[.)]\s*/, "")
-    .replace(/\s*[\(\[]?\s*\d+\s*(?:sets?|เซ็ต)?\s*[x×*]\s*\d+.*$/i, "")
-    .replace(/\s*@.*$/, "")
-    .replace(/\s*[:\-–—]\s*$/, "")
-    .trim();
-}
-function fromCalendar() {
-  return fetch(API + Date.now(), { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (data) {
-    var start = new Date(TODAY + "T00:00:00+07:00").getTime(), end = start + 86400000;
-    var ev = (data.events || []).filter(function (e) {
-      return new Date(e.start).getTime() < end && new Date(e.end).getTime() > start &&
-        GYM_RE.test((e.title || "") + " " + (e.description || ""));
-    })[0];
-    if (!ev) return null;
-    var names = String(ev.description || "").replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, "")
-      .split(/\n+/).map(cleanLine).filter(function (n) {
-        return n && n.length <= 60 && /[A-Za-z\u0E00-\u0E7F]/.test(n) && !/^(gym|workout|ยิม|เวท|ออกกำลังกาย)$/i.test(n);
-      });
-    return { title: ev.title, names: names };
-  });
-}
-
-// ---------- render ----------
+// ===== render =====
 var openHist = {};
 function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
 
 function render() {
+  var prog = progOf(cur), P = PROGRAM[prog];
   document.getElementById("day").value = cur;
   document.getElementById("dlabel").textContent = longLabel(cur) + (cur === TODAY ? " (วันนี้)" : "");
-  var dl = document.getElementById("exNames"); dl.innerHTML = "";
-  db.exercises.forEach(function (n) { var o = el("option"); o.value = n; dl.appendChild(o); });
 
-  var list = document.getElementById("list");
-  var names = namesFor(cur);
-  list.innerHTML = ""; list.className = "";
-  if (!names.length) {
-    list.className = "empty";
-    list.textContent = db.exercises.length ? "วันนี้ยังไม่ได้เลือกท่า — พิมพ์ชื่อท่าด้านล่างเพื่อเริ่ม" : "ยังไม่มีท่า — เพิ่มชื่อท่าด้านล่าง";
-    return;
+  var tabs = document.getElementById("tabs"); tabs.innerHTML = "";
+  ORDER.forEach(function (d) {
+    var b = el("button", (d === prog ? "on" : "") + (d === weekdayOf(cur) ? " td" : ""), SHORT[d]);
+    b.onclick = function () { switchProg(d); };
+    tabs.appendChild(b);
+  });
+
+  var list = document.getElementById("list"); list.innerHTML = "";
+  list.appendChild(el("div", "dayh", P.label));
+  if (P.note) list.appendChild(el("div", "dnote", P.note));
+  document.getElementById("cnt").textContent = "";
+
+  if (P.rest) { list.appendChild(el("div", "rest", "วันพัก 😴")); return; }
+  if (P.cardio) {
+    var c = el("div", "card cardio"), done = !!(db.log[cur] && db.log[cur].cardio);
+    c.appendChild(el("div", "ti", P.cardio));
+    var b = el("button", "ok" + (done ? " on" : ""), done ? "✓ ทำแล้ว" : "✓");
+    b.style.padding = "6px 14px";
+    b.onclick = function () {
+      if (!db.log[cur]) db.log[cur] = { prog: prog, ex: {} };
+      db.log[cur].cardio = !done; save(); render();
+    };
+    c.appendChild(b); if (done) c.classList.add("all");
+    list.appendChild(c); return;
   }
-  names.forEach(function (n) { list.appendChild(card(n)); });
+
+  var doneSets = 0, total = 0;
+  P.ex.forEach(function (item) {
+    var r = setsFor(prog, item, cur);
+    total += r.sets.length; doneSets += r.sets.filter(function (s) { return s.done; }).length;
+    list.appendChild(card(prog, item, r.sets));
+  });
+  document.getElementById("cnt").textContent = "เสร็จ " + doneSets + "/" + total + " เซ็ต";
 }
 
-function card(name) {
+function card(prog, item, sets) {
   var c = el("div", "card");
-  var sets = (db.log[cur] && db.log[cur][name]) || [];
-  var last = lastSession(name, cur);
-  var tg = target(last);
+  var last = lastFor(prog, item.t, cur);
+  var ti = el("div", "ti", item.t); ti.title = "แตะเพื่อดูประวัติ";
+  ti.onclick = function () { openHist[item.t] = !openHist[item.t]; render(); };
+  c.appendChild(ti);
+  c.appendChild(el("div", "pl", "— " + item.p));
+  c.appendChild(el("div", "last", last ? "ครั้งก่อน " + shortLabel(last.day) + ": " + setsText(last.sets) : "ยังไม่มีประวัติ — ใช้ค่าจากโปรแกรม"));
 
-  var head = el("div", "ch");
-  var left = el("div");
-  var nm = el("div", "nm", name);
-  nm.title = "แตะเพื่อดูประวัติ";
-  nm.onclick = function () { openHist[name] = !openHist[name]; render(); };
-  left.appendChild(nm);
-  left.appendChild(el("div", "last", last ? "ครั้งก่อน " + shortLabel(last.day) + ": " + setsText(last.sets) : "ครั้งแรก — ตั้งน้ำหนักเริ่มต้น"));
-  if (tg) left.appendChild(el("div", "tgt", "🎯 " + tg.text));
-  head.appendChild(left);
-  var rm = el("button", "ghost", "✕");
-  rm.title = "เอาท่านี้ออกจากวันนี้";
-  rm.onclick = function () {
-    if (sets.filter(valid).length && !confirm("ลบ " + name + " และเซ็ตที่บันทึกของวันนี้?")) return;
-    if (db.log[cur]) { delete db.log[cur][name]; if (!Object.keys(db.log[cur]).length) delete db.log[cur]; }
-    if (db.plan[cur]) db.plan[cur] = db.plan[cur].filter(function (x) { return x !== name; });
-    if (cur === TODAY && !db.plan[cur]) db.plan[cur] = namesFor(cur).filter(function (x) { return x !== name; });
-    save(); render();
-  };
-  head.appendChild(rm);
-  c.appendChild(head);
+  // progression hint from last time
+  if (last) {
+    var hit = last.sets.some(function (s) { return filled(s) && +s.r >= REP_BUMP; });
+    var sameW = sets.every(function (s, i) { var l = last.sets[i] || last.sets[0]; return wSum(s.w) <= wSum(l.w); });
+    if (hit && sameW) {
+      var sg = el("div", "sug up", "🔼 ครั้งก่อนได้ " + REP_BUMP + "+ reps → เพิ่มน้ำหนัก");
+      var bb = el("button", null, "+" + fmt(stepFor(sets[0].w)) + " kg");
+      bb.onclick = function () { sets.forEach(function (s) { s.w = bumpW(s.w, 1); }); persist(prog, item, sets); render(); };
+      sg.appendChild(bb); c.appendChild(sg);
+    } else if (!hit) {
+      var best = Math.max.apply(null, last.sets.filter(filled).map(function (s) { return +s.r; }));
+      c.appendChild(el("div", "sug keep", "🎯 น้ำหนักเดิม เอาให้ได้ " + (best + 1) + "+ reps (ถึง " + REP_BUMP + " = ขึ้นน้ำหนัก)"));
+    }
+  }
 
-  var box = el("div", "sets");
-  sets.forEach(function (s, i) { box.appendChild(setRow(name, i, s)); });
-  c.appendChild(box);
+  var ch = el("div", "colh");
+  ["", "kg", "reps", "เสร็จ"].forEach(function (t) { ch.appendChild(el("div", null, t)); });
+  c.appendChild(ch);
+  sets.forEach(function (s, i) {
+    var row = el("div", "set");
+    row.appendChild(el("div", "i", String(i + 1)));
+    row.appendChild(stepper(s, "w", "kg", function (dir) { s.w = bumpW(s.w, dir); }));
+    row.appendChild(stepper(s, "r", "reps", function (dir) { s.r = String(Math.max(0, (parseInt(s.r, 10) || 0) + dir)); }));
+    var ok = el("button", "ok" + (s.done ? " on" : ""), "✓");
+    ok.onclick = function () { s.done = !s.done; persist(prog, item, sets); render(); };
+    row.appendChild(ok);
+    var tag = el("div", "tag");
+    tag.innerHTML = tagHtml(s, last && (last.sets[i] || last.sets[0]));
+    row.appendChild(tag);
+    c.appendChild(row);
 
-  var row = el("div", "row");
-  var add = el("button", null, "+ เซ็ต");
-  add.onclick = function () {
-    var arr = ensure(name);
-    var prev = arr[arr.length - 1];
-    // first set starts from the overload target; later sets copy the previous one
-    arr.push({ w: prev ? prev.w : (tg ? fmt(tg.w) : ""), r: prev ? prev.r : (tg ? String(tg.r) : "") });
-    save(); render();
-    var inputs = document.querySelectorAll(".card input[data-ex='" + CSS.escape(name) + "'][data-f=r]");
-    if (inputs.length) inputs[inputs.length - 1].focus();
-  };
-  row.appendChild(add);
-  row.appendChild(summary(sets, last));
-  c.appendChild(row);
+    function stepper(obj, f, unit, step) {
+      var box = el("div", "stp");
+      var minus = el("button", null, "−"), plus = el("button", null, "+");
+      var inp = el("input"); inp.value = obj[f]; inp.placeholder = unit;
+      inp.inputMode = f === "r" ? "numeric" : "decimal";
+      inp.oninput = function () { obj[f] = inp.value.trim(); persist(prog, item, sets); tag.innerHTML = tagHtml(s, last && (last.sets[i] || last.sets[0])); };
+      inp.onchange = function () { render(); };
+      minus.onclick = function () { step(-1); persist(prog, item, sets); render(); };
+      plus.onclick = function () { step(1); persist(prog, item, sets); render(); };
+      box.appendChild(minus); box.appendChild(inp);
+      box.appendChild(plus);
+      return box;
+    }
+  });
 
-  var st = stats(sets);
-  if (last && st.n && (st.e1 > stats(last.sets).e1 || st.vol > stats(last.sets).vol)) c.classList.add("done");
-
-  if (openHist[name]) c.appendChild(histBox(name));
+  if (sets.length && sets.every(function (s) { return s.done; })) c.classList.add("all");
+  if (openHist[item.t]) {
+    var h = el("div", "hist"), rows = histFor(prog, item.t);
+    if (!rows.length) h.textContent = "ยังไม่มีประวัติ";
+    rows.slice(0, 30).forEach(function (x) {
+      var d = el("div"); d.appendChild(el("span", null, shortLabel(x.day))); d.appendChild(el("span", null, setsText(x.sets))); h.appendChild(d);
+    });
+    c.appendChild(h);
+  }
   return c;
 }
 
-function ensure(name) {
-  if (!db.log[cur]) db.log[cur] = {};
-  if (!db.log[cur][name]) db.log[cur][name] = [];
-  rememberName(name);
-  return db.log[cur][name];
+function tagHtml(s, prev) {
+  if (!filled(s)) return "";
+  var r = +s.r, out, heavier = prev && filled(prev) && wSum(s.w) > wSum(prev.w);
+  if (r >= REP_BUMP && heavier) out = "<span class=in>" + r + " reps</span>";
+  else if (r >= REP_BUMP) out = "<span class=hi>" + r + " reps · ครั้งหน้าเพิ่มน้ำหนัก 🔼</span>";
+  else if (r < REP_MIN) out = "<span class=lo>" + r + " reps · ต่ำกว่าเรนจ์</span>";
+  else out = "<span class=in>ในเรนจ์ " + REP_MIN + "–" + REP_MAX + "</span>";
+  if (prev && filled(prev)) {
+    var dw = wSum(s.w) - wSum(prev.w), dr = r - +prev.r;
+    if (dw > 0) out += " · <span class=in>▲ +" + fmt(dw) + " kg</span>";
+    else if (dw < 0) out += " · <span class=lo>▼ " + fmt(dw) + " kg</span>";
+    else if (dr > 0) out += " · <span class=in>▲ +" + dr + " rep</span>";
+    else if (dr < 0) out += " · <span class=lo>▼ " + dr + " rep</span>";
+    else out += " · <span class=eq>= เท่าเดิม</span>";
+  }
+  return out;
 }
 
-function setRow(name, i, s) {
-  var r = el("div", "set");
-  r.appendChild(el("div", "i", String(i + 1)));
-  var w = el("input"); w.type = "number"; w.inputMode = "decimal"; w.step = "any"; w.min = "0"; w.placeholder = "kg"; w.value = s.w;
-  var x = el("div", "x", "×");
-  var rp = el("input"); rp.type = "number"; rp.inputMode = "numeric"; rp.step = "1"; rp.min = "0"; rp.placeholder = "ครั้ง"; rp.value = s.r;
-  w.dataset.ex = rp.dataset.ex = name; w.dataset.f = "w"; rp.dataset.f = "r";
-  function upd() { s.w = w.value; s.r = rp.value; save(); refreshSummary(r.closest(".card"), name); }
-  w.oninput = upd; rp.oninput = upd;
-  var del = el("button", "ghost", "–"); del.title = "ลบเซ็ต";
-  del.onclick = function () { db.log[cur][name].splice(i, 1); save(); render(); };
-  r.appendChild(w); r.appendChild(x); r.appendChild(rp); r.appendChild(del);
-  return r;
-}
-
-function cmp(a, b) {
-  if (!b) return "";
-  var d = a - b, pct = b ? (d / b) * 100 : 0;
-  if (Math.abs(d) < 0.05) return "<span class=eq>=</span>";
-  return d > 0 ? "<span class=up>▲" + fmt(pct) + "%</span>" : "<span class=dn>▼" + fmt(-pct) + "%</span>";
-}
-function summary(sets, last) {
-  var s = el("div", "sum");
-  var a = stats(sets), b = last ? stats(last.sets) : null;
-  if (!a.n) { s.textContent = b ? "ครั้งก่อน: volume " + fmt(b.vol) + " · 1RM≈" + fmt(b.e1) : ""; return s; }
-  s.innerHTML = "volume " + fmt(a.vol) + " " + cmp(a.vol, b && b.vol) + " · 1RM≈" + fmt(a.e1) + " " + cmp(a.e1, b && b.e1);
-  return s;
-}
-function refreshSummary(card, name) {
-  var sets = db.log[cur][name], last = lastSession(name, cur);
-  var old = card.querySelector(".sum");
-  old.replaceWith(summary(sets, last));
-  var st = stats(sets), lt = last && stats(last.sets);
-  card.classList.toggle("done", !!(lt && st.n && (st.e1 > lt.e1 || st.vol > lt.vol)));
-}
-
-function histBox(name) {
-  var h = el("div", "hist");
-  var rows = history(name);
-  if (!rows.length) { h.textContent = "ยังไม่มีประวัติ"; return h; }
-  if (rows.length > 1) h.appendChild(spark(rows.map(function (x) { return x.st.e1; })));
-  var t = el("table");
-  rows.slice().reverse().slice(0, 20).forEach(function (x) {
-    var tr = el("tr");
-    tr.appendChild(el("td", null, shortLabel(x.day)));
-    tr.appendChild(el("td", null, setsText(x.sets)));
-    tr.appendChild(el("td", null, "1RM≈" + fmt(x.st.e1)));
-    t.appendChild(tr);
-  });
-  h.insertBefore(el("div", null, "1RM โดยประมาณ (" + rows.length + " ครั้ง)"), h.firstChild);
-  h.appendChild(t);
-  return h;
-}
-function spark(vals) {
-  var W = 300, H = 70, P = 6;
-  var mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals), rg = mx - mn || 1;
-  var pts = vals.map(function (v, i) {
-    return [P + (i / (vals.length - 1)) * (W - 2 * P), H - P - ((v - mn) / rg) * (H - 2 * P)];
-  });
-  var ns = "http://www.w3.org/2000/svg", svg = document.createElementNS(ns, "svg");
-  svg.setAttribute("viewBox", "0 0 " + W + " " + H); svg.setAttribute("preserveAspectRatio", "none");
-  var pl = document.createElementNS(ns, "polyline");
-  pl.setAttribute("points", pts.map(function (p) { return p.join(","); }).join(" "));
-  pl.setAttribute("fill", "none"); pl.setAttribute("stroke", "#2f81f7"); pl.setAttribute("stroke-width", "2");
-  pl.setAttribute("vector-effect", "non-scaling-stroke");
-  svg.appendChild(pl);
-  var lp = pts[pts.length - 1], c = document.createElementNS(ns, "circle");
-  c.setAttribute("cx", lp[0]); c.setAttribute("cy", lp[1]); c.setAttribute("r", "3"); c.setAttribute("fill", "#3fb950");
-  svg.appendChild(c);
-  return svg;
-}
-
-// ---------- actions ----------
-function addExercise(n) {
-  n = String(n || "").trim();
-  if (!n) return;
-  rememberName(n);
-  var names = namesFor(cur);
-  if (names.indexOf(n) < 0) names.push(n);
-  db.plan[cur] = names;
+function switchProg(d) {
+  if (d === progOf(cur)) return;
+  var L = db.log[cur];
+  if (L && ((L.ex && Object.keys(L.ex).length) || L.cardio) && !confirm("วันนี้บันทึกของ " + PROGRAM[L.prog].label + " ไว้แล้ว — เปลี่ยนเป็น " + PROGRAM[d].label + " และลบของเดิม?")) return;
+  if (d === weekdayOf(cur)) delete db.log[cur]; else db.log[cur] = { prog: d, ex: {} };
   save(); render();
 }
-document.getElementById("addBtn").onclick = function () {
-  var i = document.getElementById("newEx"); addExercise(i.value); i.value = "";
-};
-document.getElementById("newEx").onkeydown = function (e) { if (e.key === "Enter") document.getElementById("addBtn").click(); };
-document.getElementById("day").onchange = function (e) { if (e.target.value) { cur = e.target.value; render(); } };
-document.getElementById("prev").onclick = function () { cur = shiftKey(cur, -1); render(); };
-document.getElementById("next").onclick = function () { cur = shiftKey(cur, 1); render(); };
-document.getElementById("today").onclick = function () { cur = TODAY; render(); };
 
+// ===== controls =====
+document.getElementById("day").onchange = function (e) { if (e.target.value) { cur = e.target.value; render(); } };
+document.getElementById("prev").onclick = function () { cur = shift(cur, -1); render(); };
+document.getElementById("next").onclick = function () { cur = shift(cur, 1); render(); };
+document.getElementById("today").onclick = function () { cur = TODAY; render(); };
 document.getElementById("exp").onclick = function () {
-  var blob = new Blob([JSON.stringify(db, null, 1)], { type: "application/json" });
   var a = document.createElement("a");
-  a.href = URL.createObjectURL(blob); a.download = "gym-" + TODAY + ".json";
-  document.body.appendChild(a); a.click(); a.remove();
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(db, null, 1)], { type: "application/json" }));
+  a.download = "gym-" + TODAY + ".json"; document.body.appendChild(a); a.click(); a.remove();
 };
 document.getElementById("imp").onclick = function () { document.getElementById("impFile").click(); };
 document.getElementById("impFile").onchange = function (e) {
   var f = e.target.files[0]; if (!f) return;
   f.text().then(function (t) {
-    var d = JSON.parse(t);
-    if (!d || !d.log) throw new Error("ไฟล์ไม่ถูกต้อง");
-    if (!confirm("แทนที่ข้อมูลในเครื่องนี้ด้วยไฟล์นี้?")) return;
-    db = { exercises: d.exercises || [], log: d.log, plan: d.plan || {} };
-    save(); render(); toast("Import แล้ว");
-  }).catch(function (err) { toast("Import ไม่ได้: " + err.message); });
+    var d = JSON.parse(t); if (!d || !d.log) throw new Error("ไฟล์ไม่ถูกต้อง");
+    if (confirm("แทนที่ข้อมูลในเครื่องนี้ด้วยไฟล์นี้?")) { db = d; save(); render(); }
+  }).catch(function (err) { alert("Import ไม่ได้: " + err.message); });
   e.target.value = "";
 };
-
-var tt;
-function toast(m) {
-  var t = document.getElementById("toast"); t.textContent = m; t.classList.add("on");
-  clearTimeout(tt); tt = setTimeout(function () { t.classList.remove("on"); }, 2200);
-}
-
-// ---------- boot ----------
 render();
-var src = document.getElementById("src");
-fromCalendar().then(function (r) {
-  if (!r || !r.names.length) { src.textContent = r ? "ปฏิทินวันนี้: " + r.title + " (ไม่มีรายชื่อท่าในรายละเอียด)" : ""; return; }
-  src.textContent = "ท่าจากปฏิทินวันนี้ · " + r.title;
-  r.names.forEach(rememberName);
-  var names = namesFor(TODAY);
-  r.names.forEach(function (n) { if (names.indexOf(n) < 0) names.push(n); });
-  db.plan[TODAY] = names;
-  save();
-  if (cur === TODAY) render();
-}).catch(function () { /* offline is fine — local list still works */ });
 </script>
 </body>
 </html>
