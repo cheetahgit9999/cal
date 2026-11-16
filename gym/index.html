@@ -30,7 +30,49 @@ button:active{background:#30363d}
 .stp button{border:0;border-radius:0;background:#1b2028;padding:0 11px;font-size:18px;color:#adbac7}
 .stp input{flex:1;min-width:0;width:100%;background:none;border:0;text-align:center;font-weight:650;font-size:17px;font-variant-numeric:tabular-nums}
 .stp input:focus{outline:none;background:#101722}
-.stp.lo input{color:#f85149}.stp.hi input{color:#f0883e}
+.stp.up{border-color:#3fb950;background:#0f2a17}.stp.up input{color:#3fb950}
+.stp.dn{border-color:#f85149;background:#2d1215}.stp.dn input{color:#f85149}
+.stp.flash{animation:fl .6s ease}
+@keyframes fl{0%{box-shadow:0 0 0 4px #e3b34199}100%{box-shadow:0 0 0 0 transparent}}
+.dl{display:grid;grid-template-columns:1fr 1fr 64px;gap:8px;margin-top:4px;font-size:12px;font-weight:700;text-align:center;font-variant-numeric:tabular-nums;min-height:16px}
+.dl .up{color:#3fb950}.dl .dn{color:#f85149}.dl .hi{color:#f0883e}.dl .lo{color:#f85149}.dl .was{color:#6e7681;font-weight:500}
+.nmr{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.badge{flex-shrink:0;font-size:12px;font-weight:800;padding:2px 9px;border-radius:20px}
+.badge.up{background:#2386363d;color:#3fb950}.badge.dn{background:#f851492e;color:#f85149}
+.card.pr{box-shadow:inset 4px 0 0 #3fb950}.card.rg{box-shadow:inset 4px 0 0 #f85149}
+.game{display:flex;justify-content:center;gap:6px;margin:-6px 0 8px;font-size:13px;font-weight:800;font-variant-numeric:tabular-nums}
+.game span{padding:3px 10px;border-radius:20px;background:#21262d;color:#adbac7}
+.game .lv{background:#3b2a07;color:#e3b341}.game .fire{background:#3d1a0a;color:#ff8b3d}
+.lvb{height:3px;background:#30363d;border-radius:2px;margin:6px auto 0;max-width:160px;overflow:hidden}
+.lvb i{display:block;height:100%;background:#e3b341;transition:width .6s}
+.dbar{position:relative;height:22px;background:#161b22;border:1px solid #30363d;border-radius:12px;overflow:hidden;margin:0 0 12px}
+.dbar i{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,#238636,#3fb950);transition:width .7s cubic-bezier(.2,1.4,.4,1)}
+.dbar b{position:relative;display:block;text-align:center;font-size:12.5px;line-height:20px;font-variant-numeric:tabular-nums}
+.dbar.full i{background:linear-gradient(90deg,#e3b341,#3fb950,#e3b341);background-size:200% 100%;animation:sh 2s linear infinite}
+@keyframes sh{to{background-position:200% 0}}
+.ok.pop{animation:pop .45s cubic-bezier(.2,1.8,.4,1)}
+@keyframes pop{0%{transform:scale(.75)}60%{transform:scale(1.18)}100%{transform:scale(1)}}
+.card.win{animation:win .7s ease}
+@keyframes win{0%{transform:scale(1)}30%{transform:scale(1.03);box-shadow:0 0 0 3px #3fb950,0 0 24px #3fb95088}100%{transform:scale(1)}}
+.xp{position:fixed;z-index:30;pointer-events:none;font-weight:900;font-size:18px;color:#3fb950;text-shadow:0 2px 6px #000;animation:xp 1.1s ease-out forwards;transform:translate(-50%,0)}
+.xp.gold{color:#e3b341;font-size:22px}
+@keyframes xp{0%{opacity:0;margin-top:0}15%{opacity:1}100%{opacity:0;margin-top:-70px}}
+#fx{position:fixed;inset:0;pointer-events:none;z-index:40}
+#cel{position:fixed;inset:0;z-index:35;background:rgba(1,4,9,.88);display:none;align-items:center;justify-content:center;padding:20px}
+#cel.on{display:flex}
+#cel .bx{width:100%;max-width:380px;background:linear-gradient(160deg,#2b2108,#0f2a17);border:2px solid #e3b341;border-radius:24px;padding:26px 20px 20px;text-align:center;animation:pop .6s cubic-bezier(.2,1.6,.4,1)}
+#cel .tr{font-size:72px;line-height:1}
+#cel h2{margin:8px 0 14px;font-size:26px;letter-spacing:.04em;color:#e3b341}
+#cel .st{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
+#cel .st div{background:#0b0e13aa;border-radius:12px;padding:10px 4px;font-size:12px;color:#8b949e}
+#cel .st b{display:block;font-size:22px;color:#e6edf3}
+#cel button{width:100%;padding:15px;font-size:19px;font-weight:800;border-radius:14px;background:#e3b341;border-color:#e3b341;color:#1a1300}
+#lvl{position:fixed;left:50%;top:30%;transform:translate(-50%,-50%);z-index:36;pointer-events:none;font-size:34px;font-weight:900;color:#e3b341;text-shadow:0 0 20px #e3b34188,0 3px 8px #000;display:none}
+#lvl.on{display:block;animation:lv 1.6s ease forwards}
+@keyframes lv{0%{opacity:0;transform:translate(-50%,-50%) scale(.5)}20%{opacity:1;transform:translate(-50%,-50%) scale(1.15)}80%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-60%) scale(1)}}
+.sum{display:flex;justify-content:center;gap:8px;margin:-8px 0 12px;font-size:14px;font-weight:800}
+.sum span{padding:3px 12px;border-radius:20px}
+.sum .up{background:#2386363d;color:#3fb950}.sum .dn{background:#f851492e;color:#f85149}
 .card.all .stp{opacity:.6}
 .ok{height:44px;padding:0;border-radius:10px;border:2px solid #30363d;background:none;color:#6e7681;font-weight:700;font-size:15px}
 .ok.part{border-color:#2f81f7;color:#58a6ff}
@@ -93,6 +135,15 @@ button:active{background:#30363d}
   <button id="tstop">✕</button>
 </div></div>
 
+<canvas id="fx"></canvas>
+<div id="lvl"></div>
+<div id="cel"><div class="bx">
+  <div class="tr">🏆</div>
+  <h2>WORKOUT DONE</h2>
+  <div class="st" id="celst"></div>
+  <button id="celok">💪</button>
+</div></div>
+
 <div id="pop"><div class="bx">
   <div class="big" id="pclk">3:00</div>
   <div class="nx" id="pnext"></div>
@@ -113,7 +164,7 @@ var PROGRAM = {
     { t: "5. Lat Pulldown x1", s: 1, w: "35", r: "" },
     { t: "6. Standing cable Curl x1 (rest 2-3min)", s: 1, w: "13.75", r: "7" },
     { t: "7. 🔺Cable Tricep Extension x1 (rest 2-3min)", s: 1, w: "11.25", r: "7" },
-    { t: "8. Cable Hammer Curl x1 (rest 2-3min)", s: 1, w: "13.6", r: "" },
+    { t: "8. Cable Hammer Curl x1", s: 1, w: "13.6", r: "" },
     { t: "9. 🔺Cable Overhead Tricep Extension x1 (rest 2-3 min)", s: 1, w: "13.75", r: "" }
   ]},
   WED: { label: "WEDNESDAY (LOWER)", ex: [
@@ -121,26 +172,26 @@ var PROGRAM = {
     { t: "2. Hack squat x2", s: 2, w: "10", r: "6" },
     { t: "3. Hamstring Curl x2", s: 2, w: "50", r: "7" },
     { t: "4. SLDL x2", s: 2, w: "27.5", r: "8" },
-    { t: "6. Abs Crunch x2", s: 2, w: "90", r: "5" }
+    { t: "5. Abs Crunch x2", s: 2, w: "90", r: "5" }
   ]},
   THU: { label: "THURSDAY (REST)", rest: true },
   FRI: { label: "FRIDAY (PUSH)", ex: [
-    { t: "3. Machine Pec Deck x2", s: 2, w: "30+15", r: "9" },
-    { t: "4. Incline Chest Press x2", s: 2, w: "50+15", r: "5" },
-    { t: "5. Shoulder Press x1", s: 1, w: "50", r: "4" },
-    { t: "6. Lateral Raise x2", s: 2, w: "50", r: "7" },
-    { t: "7. Cable Tricep Extension x1 (2 min)", s: 1, w: "13.75", r: "" },
-    { t: "9. Cable Overhead Tricep Extension x1", s: 1, w: "11.25", r: "7" },
-    { t: "1. Standing Calf Raise x2", s: 2, w: "70", r: "10" },
-    { t: "2. Adductor x1", s: 1, w: "50+15", r: "7" }
+    { t: "1. Machine Pec Deck x2", s: 2, w: "30+15", r: "9" },
+    { t: "2. Incline Chest Press x2", s: 2, w: "50+15", r: "5" },
+    { t: "3. Shoulder Press x1", s: 1, w: "50", r: "4" },
+    { t: "4. Lateral Raise x2", s: 2, w: "50", r: "7" },
+    { t: "5. Cable Tricep Extension x1 (2 min)", s: 1, w: "13.75", r: "" },
+    { t: "6. Cable Overhead Tricep Extension x1", s: 1, w: "11.25", r: "7" },
+    { t: "7. Standing Calf Raise x2", s: 2, w: "70", r: "10" },
+    { t: "8. Adductor x1", s: 1, w: "50+15", r: "7" }
   ]},
   SAT: { label: "SATURDAY (PULL)", ex: [
     { t: "1. T-Bar Row x2", s: 2, w: "37.5", r: "8" },
     { t: "2. Lat Pulldown x2", s: 2, w: "35", r: "9" },
     { t: "3. Close-Grip Lat Row x2", s: 2, w: "25", r: "5" },
-    { t: "4. Rear delt ยืน x1", s: 1, w: "8.75", r: "8" },
+    { t: "4. Rear delt cable fly x1", s: 1, w: "8.75", r: "8" },
     { t: "5. Standing cable Curl x2", s: 2, w: "13.75", r: "7" },
-    { t: "Cable Hammer Curl x1 (2 min)", s: 1, w: "13.6", r: "" },
+    { t: "6. Cable Hammer Curl x1", s: 1, w: "13.6", r: "" },
     { t: "7. Abs Crunch x2", s: 2, w: "70+15", r: "5" }
   ]},
   SUN: { label: "SUNDAY (CARDIO)", cardio: "1 hour" }
@@ -150,12 +201,37 @@ var SHORT = { MON: "MON", TUE: "TUE", WED: "WED", THU: "THU", FRI: "FRI", SAT: "
 var REP_MIN = 5, REP_MAX = 10, REP_BUMP = 11, REST_GOAL = 180;
 
 // ===== storage =====
-// log[date] = { prog: "TUE", ex: { "<name>": { w: "50", r: "9", d: 1 } }, cardio: bool }
-// d = sets ticked; one weight/reps per exercise
+// log[date].p[PROG] = { ex: { "<name>": { w: "50", r: "9", d: 1 } }, cardio: bool }
+// d = sets ticked; one weight/reps per exercise. Each program is kept separately per date,
+// so looking at (or training) another day's program never touches what's already logged.
 var KEY = "gym.v2";
+// renamed exercises: history logged under the old name moves to the new one
+var RENAMED = {
+  TUE: { "8. Cable Hammer Curl x1 (rest 2-3min)": "8. Cable Hammer Curl x1" },
+  WED: { "6. Abs Crunch x2": "5. Abs Crunch x2" },
+  FRI: {
+    "3. Machine Pec Deck x2": "1. Machine Pec Deck x2", "4. Incline Chest Press x2": "2. Incline Chest Press x2",
+    "5. Shoulder Press x1": "3. Shoulder Press x1", "6. Lateral Raise x2": "4. Lateral Raise x2",
+    "7. Cable Tricep Extension x1 (2 min)": "5. Cable Tricep Extension x1 (2 min)",
+    "9. Cable Overhead Tricep Extension x1": "6. Cable Overhead Tricep Extension x1",
+    "1. Standing Calf Raise x2": "7. Standing Calf Raise x2", "2. Adductor x1": "8. Adductor x1"
+  },
+  SAT: {
+    "4. Rear delt ยืน x1": "4. Rear delt cable fly x1",
+    "Cable Hammer Curl x1 (2 min)": "6. Cable Hammer Curl x1", "Cable Hammer Curl x1": "6. Cable Hammer Curl x1"
+  }
+};
 function migrate(d) {
   Object.keys(d.log || {}).forEach(function (k) {
-    var ex = d.log[k].ex || {};
+    var L = d.log[k];
+    if (!L.p) { // older format: one program per date
+      L.p = {};
+      if (L.prog) L.p[L.prog] = { ex: L.ex || {}, cardio: !!L.cardio };
+      delete L.prog; delete L.ex; delete L.cardio;
+    }
+  });
+  Object.keys(d.log || {}).forEach(function (k) { Object.keys(d.log[k].p).forEach(function (pg) {
+    var ex = d.log[k].p[pg].ex = d.log[k].p[pg].ex || {};
     Object.keys(ex).forEach(function (n) {
       var v = ex[n];
       if (Array.isArray(v)) {
@@ -163,7 +239,14 @@ function migrate(d) {
         ex[n] = { w: f.w || "", r: f.r == null ? "" : String(f.r), d: v.filter(function (s) { return s && s.done; }).length };
       }
     });
-  });
+  }); });
+  Object.keys(d.log || {}).forEach(function (k) { Object.keys(RENAMED).forEach(function (pg) {
+    var L = d.log[k].p[pg]; if (!L) return;
+    Object.keys(RENAMED[pg]).forEach(function (o) {
+      if (L.ex[o] && !L.ex[RENAMED[pg][o]]) L.ex[RENAMED[pg][o]] = L.ex[o];
+      delete L.ex[o];
+    });
+  }); });
   return d;
 }
 function load() {
@@ -185,7 +268,22 @@ function shift(k, n) { return dayKey(new Date(kDate(k).getTime() + n * 86400000)
 function weekdayOf(k) { return ORDER[(kDate(k).getUTCDay() + 6) % 7]; }
 function dLabel(k) { return new Intl.DateTimeFormat("en-GB", { timeZone: TZ, weekday: "short", day: "numeric", month: "short" }).format(kDate(k)); }
 var TODAY = dayKey(new Date()), cur = TODAY;
-function progOf(k) { return (db.log[k] && db.log[k].prog) || weekdayOf(k); }
+function dp(k, prog, create) { // the log of one program on one date
+  if (!db.log[k]) { if (!create) return null; db.log[k] = { p: {} }; }
+  if (!db.log[k].p[prog]) { if (!create) return null; db.log[k].p[prog] = { ex: {} }; }
+  return db.log[k].p[prog];
+}
+// which program tab is shown; remembered for today so a reload (e.g. back from Shortcuts) keeps it
+var VKEY = "gym.view", view = weekdayOf(cur);
+try { var _v = JSON.parse(localStorage.getItem(VKEY)); if (_v && _v.date === cur && PROGRAM[_v.prog]) view = _v.prog; } catch (e) {}
+function setView(pg) { view = pg; try { localStorage.setItem(VKEY, JSON.stringify({ date: cur, prog: pg })); } catch (e) {} }
+function goDate(k) {
+  cur = k;
+  var v = weekdayOf(k);
+  if (timer && timer.date === k && timer.prog) v = timer.prog;
+  else if (db.log[k] && !dp(k, v)) { var ks = Object.keys(db.log[k].p); if (ks.length) v = ks[0]; }
+  setView(v); render();
+}
 
 // ===== weights ("50+15" = 65) =====
 function wSum(w) { return String(w || "").split("+").reduce(function (a, x) { var n = parseFloat(x); return a + (isFinite(n) ? n : 0); }, 0); }
@@ -197,88 +295,143 @@ function bumpW(w, dir) {
   return fmt(Math.max(0, parseFloat(m[1]) + dir * stepFor(s))) + m[2];
 }
 function hasReps(e) { return e && e.r !== "" && e.r != null; }
+// change vs the last session (or the program's starting numbers): dir 1 = progressive overload, -1 = went down
+function compare(prog, item, k, e) {
+  var last = lastFor(prog, item.t, k), b = last ? last.e : { w: item.w, r: item.r };
+  var dw = wSum(e.w) - wSum(b.w), dr = hasReps(e) && hasReps(b) ? +e.r - +b.r : 0;
+  dw = Math.round(dw * 100) / 100;
+  var dir = dw > 0 ? 1 : dw < 0 ? -1 : dr > 0 ? 1 : dr < 0 ? -1 : 0;
+  return { dw: dw, dr: dr, dir: dir, base: b, hasLast: !!last };
+}
 
 // ===== history =====
 function lastFor(prog, name, before) {
-  var days = Object.keys(db.log).filter(function (d) { return d < before && db.log[d].prog === prog; }).sort().reverse();
+  var days = Object.keys(db.log).filter(function (d) { return d < before && dp(d, prog); }).sort().reverse();
   for (var i = 0; i < days.length; i++) {
-    var e = db.log[days[i]].ex && db.log[days[i]].ex[name];
+    var e = dp(days[i], prog).ex[name];
     if (hasReps(e)) return { day: days[i], e: e };
   }
   return null;
 }
 function entryFor(prog, item, k) {
-  var L = db.log[k];
-  if (L && L.prog === prog && L.ex && L.ex[item.t]) return L.ex[item.t];
+  var L = dp(k, prog);
+  if (L && L.ex[item.t]) return L.ex[item.t];
   var last = lastFor(prog, item.t, k);
   return { w: last ? last.e.w : item.w, r: last ? String(last.e.r) : item.r, d: 0 };
 }
 function persist(prog, item, e) {
-  if (!db.log[cur]) db.log[cur] = { prog: prog, ex: {} };
-  db.log[cur].prog = prog;
-  db.log[cur].ex = db.log[cur].ex || {};
-  db.log[cur].ex[item.t] = e;
+  dp(cur, prog, true).ex[item.t] = e;
   save();
 }
 
 // ===== render =====
-var openHist = {}, nextUp = null;
+var openHist = {}, nextUp = null, flashKey = null;
 function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
 
 function render() {
-  var prog = progOf(cur), P = PROGRAM[prog];
+  var prog = view, P = PROGRAM[prog];
   var dl = document.getElementById("dlabel");
   dl.textContent = dLabel(cur); dl.className = "d" + (cur === TODAY ? " t" : "");
   var tabs = document.getElementById("tabs"); tabs.innerHTML = "";
   ORDER.forEach(function (d) {
     var b = el("button", (d === prog ? "on" : "") + (d === weekdayOf(cur) ? " td" : ""), SHORT[d]);
-    b.onclick = function () { switchProg(d); };
+    b.onclick = function () { setView(d); render(); };
     tabs.appendChild(b);
   });
   var list = document.getElementById("list"); list.innerHTML = "";
   nextUp = findNext();
   list.appendChild(el("div", "ph" + (P.rest ? " dim" : ""), P.label));
+  list.appendChild(gameHeader());
   if (P.rest) { updateTimer(); return; }
   if (P.cardio) {
-    var c = el("div", "card"), done = !!(db.log[cur] && db.log[cur].cardio);
+    var c = el("div", "card"), done = !!(dp(cur, prog) && dp(cur, prog).cardio);
     c.style.display = "flex"; c.style.justifyContent = "space-between"; c.style.alignItems = "center";
     c.appendChild(el("div", "nm", P.cardio));
     var b = el("button", "ok" + (done ? " on" : ""), "✓"); b.style.width = "64px";
-    b.onclick = function () { if (!db.log[cur]) db.log[cur] = { prog: prog, ex: {} }; db.log[cur].cardio = !done; save(); render(); };
+    b.onclick = function () {
+      var before = game();
+      dp(cur, prog, true).cardio = !done; save(); render();
+      if (!done) afterTick(prog, null, before, { set: true, exDone: true, dayDone: true });
+    };
     c.appendChild(b); if (done) c.classList.add("all");
     list.appendChild(c); updateTimer(); return;
   }
-  P.ex.forEach(function (item) { list.appendChild(card(prog, item)); });
+  var up = 0, dn = 0;
+  P.ex.forEach(function (item) {
+    var e = entryFor(prog, item, cur);
+    if (!dp(cur, prog) || !dp(cur, prog).ex[item.t]) return; // only what's been touched today
+    var d = compare(prog, item, cur, e).dir; if (d > 0) up++; else if (d < 0) dn++;
+  });
+  if (up || dn) {
+    var sm = el("div", "sum");
+    if (up) sm.appendChild(el("span", "up", "▲ ขึ้น " + up + " ท่า"));
+    if (dn) sm.appendChild(el("span", "dn", "▼ ลง " + dn + " ท่า"));
+    list.appendChild(sm);
+  }
+  var tot = 0, got = 0;
+  P.ex.forEach(function (item) { tot += item.s; got += Math.min(item.s, entryFor(prog, item, cur).d); });
+  var bar = el("div", "dbar" + (got === tot ? " full" : "")), fill = el("i");
+  fill.style.width = (lastBar[cur + prog] != null ? lastBar[cur + prog] : got / tot * 100) + "%";
+  bar.appendChild(fill); bar.appendChild(el("b", null, got === tot ? "🏆 " + got + "/" + tot : got + "/" + tot));
+  list.insertBefore(bar, list.children[2]);
+  requestAnimationFrame(function () { requestAnimationFrame(function () { fill.style.width = got / tot * 100 + "%"; }); });
+  lastBar[cur + prog] = got / tot * 100;
+  P.ex.forEach(function (item, i) { var c = card(prog, item); c.dataset.i = i; list.appendChild(c); });
+  flashKey = null;
   updateTimer();
 }
 
 function card(prog, item) {
   var e = entryFor(prog, item, cur);
-  var c = el("div", "card" + (e.d >= item.s ? " all" : nextUp && nextUp.t === item.t ? " cur" : ""));
-  var nm = el("div", "nm", item.t);
+  var isNext = nextUp && nextUp.t === item.t && nextUp.date === cur && nextUp.prog === prog;
+  var cmp = compare(prog, item, cur, e);
+  var c = el("div", "card" + (e.d >= item.s ? " all" : isNext ? " cur" : "") + (cmp.dir > 0 ? " pr" : cmp.dir < 0 ? " rg" : ""));
+  var nr = el("div", "nmr"), nm = el("div", "nm", item.t);
   nm.onclick = function () { openHist[item.t] = !openHist[item.t]; render(); };
-  c.appendChild(nm);
+  nr.appendChild(nm);
+  if (cmp.dir) nr.appendChild(el("span", "badge " + (cmp.dir > 0 ? "up" : "dn"), cmp.dir > 0 ? "▲ ขึ้นแล้ว" : "▼ ลดลง"));
+  c.appendChild(nr);
 
   var row = el("div", "row");
   row.appendChild(stepper("w", "decimal", function (dir) { e.w = bumpW(e.w, dir); }));
   row.appendChild(stepper("r", "numeric", function (dir) { e.r = String(Math.max(0, (parseInt(e.r, 10) || 0) + dir)); }));
   var ok = el("button", "ok" + (e.d >= item.s ? " on" : e.d ? " part" : ""), item.s > 1 ? "✓ " + e.d + "/" + item.s : "✓");
   ok.onclick = function () {
-    var was = e.d;
+    var was = e.d, before = game();
     e.d = e.d >= item.s ? 0 : e.d + 1; // one tap per set; tap again when full to clear
     persist(prog, item, e);
-    if (e.d > was) startRest(item.t); else if (timer && timer.ex === item.t) stopRest();
+    if (e.d < was) {
+      if (timer && timer.ex === item.t && timer.prog === prog && timer.date === cur) stopRest();
+      render(); return;
+    }
+    var dayDone = PROGRAM[prog].ex.every(function (it) { return entryFor(prog, it, cur).d >= it.s; });
+    if (dayDone) stopRest(); else startRest(prog, item.t); // no rest needed after the last set
     render();
-    if (e.d > was) alertPhone();
+    afterTick(prog, item, before, { set: true, exDone: e.d >= item.s, dayDone: dayDone });
+    if (!dayDone) alertPhone();
   };
   row.appendChild(ok);
   c.appendChild(row);
 
+  // per-field change line: ▲ +2.5 / ▼ −1, or last time's number when unchanged
+  var dl = el("div", "dl");
+  var wl = el("div"), rl = el("div");
+  if (cmp.dw > 0) { wl.className = "up"; wl.textContent = "▲ +" + fmt(cmp.dw) + " kg"; }
+  else if (cmp.dw < 0) { wl.className = "dn"; wl.textContent = "▼ " + fmt(cmp.dw) + " kg"; }
+  else if (cmp.hasLast) { wl.className = "was"; wl.textContent = "= " + cmp.base.w; }
+  if (cmp.dr > 0) { rl.className = "up"; rl.textContent = "▲ +" + cmp.dr; }
+  else if (cmp.dr < 0) { rl.className = "dn"; rl.textContent = "▼ " + cmp.dr; }
+  else if (cmp.hasLast && hasReps(cmp.base)) { rl.className = "was"; rl.textContent = "= " + cmp.base.r; }
+  if (hasReps(e) && +e.r >= REP_BUMP) { rl.className = "hi"; rl.textContent = (cmp.dr > 0 ? "▲ +" + cmp.dr + " · " : "") + "11+ → เพิ่ม kg"; }
+  else if (hasReps(e) && +e.r < REP_MIN && cmp.dr >= 0) { rl.className = "lo"; rl.textContent = "< " + REP_MIN; }
+  dl.appendChild(wl); dl.appendChild(rl); dl.appendChild(el("div"));
+  c.appendChild(dl);
+
   if (openHist[item.t]) {
     var h = el("div", "hist");
-    Object.keys(db.log).filter(function (d) { return db.log[d].prog === prog && db.log[d].ex && hasReps(db.log[d].ex[item.t]); })
+    Object.keys(db.log).filter(function (d) { return dp(d, prog) && hasReps(dp(d, prog).ex[item.t]); })
       .sort().reverse().slice(0, 30).forEach(function (d) {
-        var x = db.log[d].ex[item.t], r = el("div");
+        var x = dp(d, prog).ex[item.t], r = el("div");
         r.appendChild(el("span", null, dLabel(d))); r.appendChild(el("span", null, x.w + " × " + x.r)); h.appendChild(r);
       });
     c.appendChild(h);
@@ -286,49 +439,151 @@ function card(prog, item) {
   return c;
 
   function stepper(f, mode, step) {
-    var cls = "stp";
-    if (f === "r" && hasReps(e)) cls += +e.r >= REP_BUMP ? " hi" : +e.r < REP_MIN ? " lo" : "";
+    var dv = f === "w" ? cmp.dw : cmp.dr, cls = "stp" + (dv > 0 ? " up" : dv < 0 ? " dn" : "");
+    if (flashKey === item.t + "|" + f) cls += " flash";
     var box = el("div", cls), minus = el("button", null, "−"), plus = el("button", null, "+"), inp = el("input");
     inp.value = e[f]; inp.inputMode = mode; inp.placeholder = f === "w" ? "kg" : "reps";
     inp.oninput = function () { e[f] = inp.value.trim(); persist(prog, item, e); };
     inp.onchange = render;
-    minus.onclick = function () { step(-1); persist(prog, item, e); render(); };
-    plus.onclick = function () { step(1); persist(prog, item, e); render(); };
+    minus.onclick = function () { step(-1); persist(prog, item, e); flashKey = item.t + "|" + f; render(); };
+    plus.onclick = function () { step(1); persist(prog, item, e); flashKey = item.t + "|" + f; render(); };
     box.appendChild(minus); box.appendChild(inp); box.appendChild(plus);
     return box;
   }
 }
 
-function switchProg(d) {
-  if (d === progOf(cur)) return;
-  var L = db.log[cur];
-  if (L && ((L.ex && Object.keys(L.ex).length) || L.cardio) && !confirm(PROGRAM[L.prog].label + " → " + PROGRAM[d].label + "?")) return;
-  if (d === weekdayOf(cur)) delete db.log[cur]; else db.log[cur] = { prog: d, ex: {} };
-  save(); render();
+// ===== game: XP, level, streak, rewards (all derived from the log, nothing extra stored) =====
+var XP_SET = 10, XP_PR = 25, XP_DAY = 100, LV_XP = 300, lastBar = {};
+function itemOf(prog, name) { var P = PROGRAM[prog]; return P.ex && P.ex.filter(function (it) { return it.t === name; })[0]; }
+function dayStats(k, prog) {
+  var L = dp(k, prog), P = PROGRAM[prog], r = { sets: 0, pr: 0, done: false };
+  if (!L) return r;
+  if (P.cardio) { r.done = !!L.cardio; return r; }
+  if (!P.ex) return r;
+  P.ex.forEach(function (it) {
+    var e = L.ex[it.t]; if (!e) return;
+    r.sets += Math.min(it.s, e.d || 0);
+    if (e.d && compare(prog, it, k, e).dir > 0) r.pr++;
+  });
+  r.done = P.ex.every(function (it) { return L.ex[it.t] && L.ex[it.t].d >= it.s; });
+  return r;
+}
+function trained(k) { // anything ticked on that date, any program
+  var L = db.log[k]; if (!L) return false;
+  return Object.keys(L.p).some(function (pg) { var x = dp(k, pg); return x.cardio || Object.keys(x.ex).some(function (n) { return x.ex[n].d > 0; }); });
+}
+function game() {
+  var xp = 0;
+  Object.keys(db.log).forEach(function (k) { Object.keys(db.log[k].p).forEach(function (pg) {
+    var st = dayStats(k, pg); xp += st.sets * XP_SET + st.pr * XP_PR + (st.done ? XP_DAY : 0);
+  }); });
+  // streak: consecutive training days done; rest days don't break it, today doesn't count against you yet
+  var streak = 0, k = TODAY;
+  if (!trained(k)) k = shift(k, -1);
+  for (var n = 0; n < 400; n++, k = shift(k, -1)) {
+    if (trained(k)) { streak++; continue; }
+    if (PROGRAM[weekdayOf(k)].rest) continue;
+    break;
+  }
+  return { xp: xp, lv: Math.floor(xp / LV_XP) + 1, into: xp % LV_XP, streak: streak };
+}
+function gameHeader() {
+  var g = game(), box = el("div"), row = el("div", "game");
+  row.appendChild(el("span", "lv", "Lv " + g.lv));
+  row.appendChild(el("span", null, g.xp.toLocaleString("en-US") + " XP"));
+  row.appendChild(el("span", "fire", "🔥 " + g.streak));
+  box.appendChild(row);
+  var lb = el("div", "lvb"), li = el("i"); li.style.width = g.into / LV_XP * 100 + "%"; lb.appendChild(li); box.appendChild(lb);
+  box.style.marginBottom = "12px";
+  return box;
+}
+function floatText(x, y, text, gold) {
+  var t = el("div", "xp" + (gold ? " gold" : ""), text);
+  t.style.left = x + "px"; t.style.top = y + "px";
+  document.body.appendChild(t); setTimeout(function () { t.remove(); }, 1200);
+}
+function afterTick(prog, item, before, ev) {
+  try { if (navigator.vibrate) navigator.vibrate(ev.dayDone ? [60, 40, 60, 40, 200] : ev.exDone ? [40, 30, 80] : 25); } catch (e) {}
+  var after = game(), gained = after.xp - before.xp;
+  var c = item ? document.querySelector('.card[data-i="' + PROGRAM[prog].ex.indexOf(item) + '"]') : document.querySelector(".card");
+  var btn = c && c.querySelector(".ok");
+  if (btn) {
+    btn.classList.add("pop");
+    var r = btn.getBoundingClientRect();
+    if (gained > 0) floatText(r.left + r.width / 2, r.top - 4, "+" + gained + " XP");
+    if (ev.exDone) {
+      c.classList.add("win");
+      var cr = c.getBoundingClientRect();
+      burst(cr.left + cr.width / 2, cr.top + cr.height / 2, 60);
+      if (item && compare(prog, item, cur, entryFor(prog, item, cur)).dir > 0) {
+        setTimeout(function () { floatText(cr.left + cr.width / 2, cr.top + 10, "▲ PR!", true); burst(cr.left + cr.width / 2, cr.top + 20, 40, true); }, 250);
+      }
+    }
+  }
+  if (after.lv > before.lv) {
+    var lv = document.getElementById("lvl"); lv.textContent = "LEVEL " + after.lv + " ⭐";
+    lv.className = ""; void lv.offsetWidth; lv.className = "on";
+  }
+  if (ev.dayDone) setTimeout(function () { celebrate(prog, gained, after); }, ev.exDone ? 500 : 0);
+}
+function celebrate(prog, gained, g) {
+  var st = dayStats(cur, prog), box = document.getElementById("celst"); box.innerHTML = "";
+  var dayXp = st.sets * XP_SET + st.pr * XP_PR + (st.done ? XP_DAY : 0);
+  [[st.sets || "✓", "sets"], ["▲ " + st.pr, "PR"], ["+" + dayXp, "XP"], ["🔥 " + g.streak, "streak"]].forEach(function (x) {
+    var d = el("div"); d.appendChild(el("b", null, String(x[0]))); d.appendChild(document.createTextNode(x[1])); box.appendChild(d);
+  });
+  document.getElementById("cel").className = "on";
+  var w = window.innerWidth;
+  for (var i = 0; i < 5; i++) (function (i) { setTimeout(function () { burst(w * (0.15 + 0.175 * i), 80, 70, i % 2 === 0); }, i * 180); })(i);
+}
+
+// tiny confetti engine (canvas, no library)
+var fx = null, parts = [], fxOn = false;
+function burst(x, y, n, gold) {
+  fx = fx || document.getElementById("fx");
+  var cols = gold ? ["#e3b341", "#f0c75e", "#fff2b3", "#ff8b3d"] : ["#3fb950", "#2f81f7", "#e3b341", "#f778ba", "#a371f7", "#ff8b3d"];
+  for (var i = 0; i < n; i++) {
+    var a = Math.random() * Math.PI * 2, v = 4 + Math.random() * 7;
+    parts.push({ x: x, y: y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 5, r: Math.random() * 6.28, vr: (Math.random() - .5) * .4,
+      w: 6 + Math.random() * 6, h: 4 + Math.random() * 4, c: cols[i % cols.length], life: 70 + Math.random() * 40 });
+  }
+  if (!fxOn) { fxOn = true; requestAnimationFrame(fxLoop); }
+}
+function fxLoop() {
+  var dpr = window.devicePixelRatio || 1, W = window.innerWidth, H = window.innerHeight;
+  if (fx.width !== W * dpr || fx.height !== H * dpr) { fx.width = W * dpr; fx.height = H * dpr; }
+  var g = fx.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+  parts = parts.filter(function (p) { return --p.life > 0 && p.y < H + 40; });
+  parts.forEach(function (p) {
+    p.vy += 0.28; p.vx *= 0.985; p.x += p.vx; p.y += p.vy; p.r += p.vr;
+    g.save(); g.translate(p.x, p.y); g.rotate(p.r); g.globalAlpha = Math.min(1, p.life / 30);
+    g.fillStyle = p.c; g.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); g.restore();
+  });
+  if (parts.length) requestAnimationFrame(fxLoop); else { fxOn = false; g.clearRect(0, 0, W, H); }
 }
 
 // next = same machine if sets remain, else first unfinished in order
 function findNext() {
-  var prog = progOf(cur), P = PROGRAM[prog];
+  var k = timer && timer.date ? timer.date : cur, prog = timer && timer.prog ? timer.prog : view, P = PROGRAM[prog];
   if (!P.ex) return null;
-  var left = P.ex.filter(function (it) { return entryFor(prog, it, cur).d < it.s; });
+  var left = P.ex.filter(function (it) { return entryFor(prog, it, k).d < it.s; });
   if (!left.length) return null;
   var same = timer && left.filter(function (it) { return it.t === timer.ex; })[0];
-  var it = same || left[0], e = entryFor(prog, it, cur);
-  return { t: it.t, set: e.d + 1, s: it.s };
+  var it = same || left[0], e = entryFor(prog, it, k);
+  return { t: it.t, set: e.d + 1, s: it.s, date: k, prog: prog };
 }
 function nextText() { return nextUp ? nextUp.t + (nextUp.s > 1 ? " · " + nextUp.set + "/" + nextUp.s : "") : "✓"; }
 
 // ===== rest timer: counts up from 0:00, never stops by itself =====
-var TKEY = "gym.timer", timer = null, audio = null, lock = null;
+var TKEY = "gym.timer", timer = null, lock = null;
 try { timer = JSON.parse(localStorage.getItem(TKEY)); } catch (e) {}
 function saveTimer() { try { timer ? localStorage.setItem(TKEY, JSON.stringify(timer)) : localStorage.removeItem(TKEY); } catch (e) {} }
-function startRest(ex) {
-  try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch (e) {}
-  timer = { ex: ex, start: Date.now(), popped: false };
+function startRest(prog, ex) {
+  if (timer) cancelNags(timer);
+  timer = { ex: ex, prog: prog, date: cur, start: Date.now(), popped: false, seq: "r" + Date.now().toString(36), sent: 0 };
   saveTimer(); closePop(); wake(true);
 }
-function stopRest() { timer = null; saveTimer(); closePop(); wake(false); updateTimer(); }
+function stopRest() { if (timer) cancelNags(timer); timer = null; saveTimer(); closePop(); wake(false); updateTimer(); }
 function wake(on) {
   try {
     if (on && !lock && navigator.wakeLock) navigator.wakeLock.request("screen").then(function (l) { lock = l; l.addEventListener("release", function () { lock = null; }); }).catch(function () {});
@@ -336,18 +591,8 @@ function wake(on) {
   } catch (e) {}
 }
 function clock(sec) { var m = Math.floor(sec / 60), x = sec % 60; return m + ":" + (x < 10 ? "0" : "") + x; }
-function beep() {
-  try { if (navigator.vibrate) navigator.vibrate([400, 150, 400, 150, 800]); } catch (e) {}
-  if (!audio) return;
-  try {
-    [0, 0.3, 0.6, 1.2, 1.5, 1.8].forEach(function (t) {
-      var o = audio.createOscillator(), g = audio.createGain();
-      o.type = "square"; o.frequency.value = 880; o.connect(g); g.connect(audio.destination);
-      g.gain.setValueAtTime(0.25, audio.currentTime + t); g.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + t + 0.2);
-      o.start(audio.currentTime + t); o.stop(audio.currentTime + t + 0.2);
-    });
-  } catch (e) {}
-}
+// silent on purpose (gym): vibrate only, where the browser supports it
+function buzz() { try { if (navigator.vibrate) navigator.vibrate([400, 150, 400]); } catch (e) {} }
 function openPop() { document.getElementById("pnext").textContent = nextText(); document.getElementById("pop").className = "on"; }
 function closePop() { document.getElementById("pop").className = ""; }
 function updateTimer() {
@@ -356,7 +601,7 @@ function updateTimer() {
   var sec = Math.max(0, Math.floor((Date.now() - timer.start) / 1000)), ready = sec >= REST_GOAL;
   if (ready && !timer.popped && document.visibilityState !== "hidden") {
     timer.popped = true; saveTimer();
-    if (sec < REST_GOAL + 5) beep();
+    if (sec < REST_GOAL + 5) buzz();
     openPop();
   }
   box.className = "on" + (ready ? " ready" : "");
@@ -364,6 +609,7 @@ function updateTimer() {
   document.getElementById("pclk").textContent = clock(sec);
   document.getElementById("tnext").textContent = nextText();
   document.getElementById("tpb").style.width = Math.min(100, sec / REST_GOAL * 100) + "%";
+  topUpNags();
 }
 setInterval(updateTimer, 250);
 document.addEventListener("visibilitychange", function () { updateTimer(); if (timer && document.visibilityState === "visible") wake(true); });
@@ -380,13 +626,46 @@ var IKEY = "gym.ios", ios = { on: false, name: "Gym Rest" };
 try { var _i = JSON.parse(localStorage.getItem(IKEY)); if (_i) ios = _i; } catch (e) {}
 function saveCfg() { try { localStorage.setItem(NKEY, JSON.stringify(push)); localStorage.setItem(IKEY, JSON.stringify(ios)); } catch (e) {} }
 saveCfg();
-function sendPush(delayed) {
-  var q = "title=" + encodeURIComponent(delayed ? "3:00 ✓" : "test ✓") + "&priority=high&tags=muscle";
-  if (delayed) q += "&delay=3m";
-  if (/^https?:/.test(location.href)) q += "&click=" + encodeURIComponent(location.href.split("#")[0]);
-  return fetch("https://ntfy.sh/" + push.topic + "?" + q, { method: "POST", keepalive: true, body: delayed ? nextText() : "ok" })
+function sendPush() {
+  return fetch("https://ntfy.sh/" + push.topic + "?title=" + encodeURIComponent("test ✓"), { method: "POST", body: "ok" })
     .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return true; })
-    .catch(function (e) { if (!delayed) alert(e.message); return false; });
+    .catch(function (e) { alert(e.message); return false; });
+}
+
+// Rest reminders: at 3:00, then every 15 s until the next ✓.
+// The page can't run while iOS has it in the background, so reminders are scheduled ahead on ntfy.sh
+// (one sequence ID each) and the ones not yet delivered are cancelled on the next ✓ / ✕.
+// NAG_BATCH per ✓ keeps within ntfy.sh's free rate limits; while the page is open it keeps adding more.
+var NAG_EVERY = 15, NAG_BATCH = 8, NAG_MAX = 60, nagBusy = false;
+function nagDue(t, i) { return t.start + (REST_GOAL + NAG_EVERY * i) * 1000; }
+function scheduleNags(t, from, count) {
+  if (!push.on || !t) return Promise.resolve();
+  var click = /^https?:/.test(location.href) ? "&click=" + encodeURIComponent(location.href.split("#")[0]) : "";
+  var jobs = [];
+  for (var i = from; i < Math.min(from + count, NAG_MAX); i++) {
+    var title = (i === 0 ? "3:00 ✓" : "⏰ " + clock(REST_GOAL + NAG_EVERY * i));
+    var q = "title=" + encodeURIComponent(title) + "&priority=high&tags=muscle&delay=" + Math.floor(nagDue(t, i) / 1000) + click;
+    jobs.push(fetch("https://ntfy.sh/" + push.topic + "/" + t.seq + "-" + i + "?" + q, { method: "POST", keepalive: true, body: nextText() }).catch(function () {}));
+  }
+  t.sent = Math.max(t.sent || 0, Math.min(from + count, NAG_MAX));
+  saveTimer();
+  return Promise.all(jobs);
+}
+function cancelNags(t) {
+  if (!t || !t.seq || !t.sent) return;
+  var now = Date.now();
+  for (var i = 0; i < t.sent; i++) {
+    if (nagDue(t, i) > now - 2000) fetch("https://ntfy.sh/" + push.topic + "/" + t.seq + "-" + i, { method: "DELETE", keepalive: true }).catch(function () {});
+  }
+  t.sent = 0;
+}
+// page open on screen: keep the chain going so it never runs out
+function topUpNags() {
+  if (!push.on || !timer || !timer.seq || nagBusy || document.visibilityState === "hidden") return;
+  if (!timer.sent || timer.sent >= NAG_MAX) return;
+  if (nagDue(timer, timer.sent - 1) - Date.now() > 60000) return;
+  nagBusy = true;
+  scheduleNags(timer, timer.sent, 4).then(function () { nagBusy = false; });
 }
 function runShortcut() {
   var url = "shortcuts://x-callback-url/run-shortcut?name=" + encodeURIComponent(ios.name || "Gym Rest");
@@ -395,7 +674,7 @@ function runShortcut() {
 }
 // ntfy first: leaving for Shortcuts right away could cancel the request
 function alertPhone() {
-  var sent = push.on ? sendPush(true) : Promise.resolve();
+  var sent = scheduleNags(timer, 0, NAG_BATCH);
   if (ios.on) Promise.race([sent, new Promise(function (ok) { setTimeout(ok, 2500); })]).then(runShortcut);
 }
 
@@ -411,21 +690,21 @@ function exportText() {
   ORDER.forEach(function (p) {
     var P = PROGRAM[p];
     if (P.rest) return;
-    var pd = days.filter(function (d) { return db.log[d].prog === p; });
+    var pd = days.filter(function (d) { return dp(d, p); });
     out.push(""); out.push("## " + P.label);
     if (P.cardio) {
-      out.push(""); out.push("- " + P.cardio + ": " + (pd.filter(function (d) { return db.log[d].cardio; }).join(", ") || "no sessions logged"));
+      out.push(""); out.push("- " + P.cardio + ": " + (pd.filter(function (d) { return dp(d, p).cardio; }).join(", ") || "no sessions logged"));
       return;
     }
     P.ex.forEach(function (it) {
-      var rows = pd.filter(function (d) { return hasReps(db.log[d].ex && db.log[d].ex[it.t]); });
+      var rows = pd.filter(function (d) { return hasReps(dp(d, p).ex[it.t]); });
       out.push(""); out.push("### " + it.t);
       if (!rows.length) { out.push(""); out.push("No sessions logged."); return; }
       out.push(""); out.push("| Date | Weight (kg) | Total kg | Reps | Sets done | Est. 1RM | vs previous |");
       out.push("|---|---|---|---|---|---|---|");
       var prev = null;
       rows.forEach(function (d) {
-        var x = db.log[d].ex[it.t], tw = wSum(x.w), r = +x.r, one = tw * (1 + r / 30), ch = "first";
+        var x = dp(d, p).ex[it.t], tw = wSum(x.w), r = +x.r, one = tw * (1 + r / 30), ch = "first";
         if (prev) {
           var dw = tw - prev.tw, dr = r - prev.r;
           ch = dw > 0 ? "weight +" + fmt(dw) : dw < 0 ? "weight " + fmt(dw) : dr > 0 ? "reps +" + dr : dr < 0 ? "reps " + dr : "same";
@@ -457,10 +736,11 @@ document.getElementById("impFile").onchange = function (ev) {
 };
 
 // ===== controls =====
-document.getElementById("prev").onclick = function () { cur = shift(cur, -1); render(); };
-document.getElementById("next").onclick = function () { cur = shift(cur, 1); render(); };
-document.getElementById("dlabel").onclick = function () { cur = TODAY; render(); };
+document.getElementById("prev").onclick = function () { goDate(shift(cur, -1)); };
+document.getElementById("next").onclick = function () { goDate(shift(cur, 1)); };
+document.getElementById("dlabel").onclick = function () { goDate(TODAY); };
 document.getElementById("tstop").onclick = stopRest;
+document.getElementById("celok").onclick = function () { document.getElementById("cel").className = ""; };
 document.getElementById("prest").onclick = closePop;
 document.getElementById("pgo").onclick = function () {
   closePop();
@@ -477,7 +757,7 @@ document.getElementById("pushCopy").onclick = function () {
   pushTopic.select();
   (navigator.clipboard ? navigator.clipboard.writeText(push.topic) : Promise.reject()).catch(function () { document.execCommand("copy"); });
 };
-document.getElementById("pushTest").onclick = function () { sendPush(false); };
+document.getElementById("pushTest").onclick = function () { sendPush(); };
 document.getElementById("iosTest").onclick = runShortcut;
 render();
 </script>
