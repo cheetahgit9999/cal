@@ -34,15 +34,16 @@ button:active{background:#30363d}
 .stp.dn{border-color:#f85149;background:#2d1215}.stp.dn input{color:#f85149}
 .stp.flash{animation:fl .6s ease}
 @keyframes fl{0%{box-shadow:0 0 0 4px #e3b34199}100%{box-shadow:0 0 0 0 transparent}}
-.dl{display:grid;grid-template-columns:1fr 1fr 64px;gap:8px;margin-top:4px;font-size:12px;font-weight:700;text-align:center;font-variant-numeric:tabular-nums;min-height:16px}
+.dl{display:grid;grid-template-columns:1fr 1fr 64px;gap:8px;margin-top:4px;font-size:12px;font-weight:700;text-align:center;font-variant-numeric:tabular-nums}
+.dl:not(:has(div:not(:empty))){display:none}
 .dl .up{color:#3fb950}.dl .dn{color:#f85149}.dl .hi{color:#f0883e}.dl .lo{color:#f85149}.dl .was{color:#6e7681;font-weight:500}
 .nmr{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
 .nmw{display:flex;align-items:flex-start;gap:2px;min-width:0}
-.nl{display:flex;gap:6px;align-items:flex-start;margin:-5px 0 8px;font-size:13px;line-height:1.35;color:#8b949e;cursor:pointer;white-space:pre-wrap;word-break:break-word}
+.nl{display:flex;gap:6px;align-items:flex-start;margin:4px 0 0;font-size:13px;line-height:1.35;color:#8b949e;cursor:pointer;white-space:pre-wrap;word-break:break-word}
 .nl i{font-style:normal;flex-shrink:0;opacity:.35;filter:grayscale(1)}
 .nl.has i,.nl.open i{opacity:1;filter:none}
 .nl span{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
-.note{width:100%;margin:2px 0 10px;min-height:64px;resize:vertical;background:#0b0e13;border:1px solid #30363d;border-radius:10px;padding:8px 10px;font:inherit;font-size:14px;color:#e6edf3}
+.note{width:100%;margin:6px 0 2px;min-height:64px;resize:vertical;background:#0b0e13;border:1px solid #30363d;border-radius:10px;padding:8px 10px;font:inherit;font-size:14px;color:#e6edf3}
 .note:focus{outline:none;border-color:#2f81f7}
 .badge{flex-shrink:0;font-size:12px;font-weight:800;padding:2px 9px;border-radius:20px}
 .badge.up{background:#2386363d;color:#3fb950}.badge.dn{background:#f851492e;color:#f85149}
@@ -455,24 +456,6 @@ function card(prog, item) {
   nr.appendChild(nw);
   if (cmp.dir) nr.appendChild(el("span", "badge " + (cmp.dir > 0 ? "up" : "dn"), cmp.dir > 0 ? "▲ ขึ้นแล้ว" : "▼ ลดลง"));
   c.appendChild(nr);
-  // note line right under the name: shows the note (or a faint 📝); tap to edit
-  var nl = el("div", "nl" + (note ? " has" : "") + (openNote[nk] ? " open" : ""));
-  nl.setAttribute("role", "button"); nl.setAttribute("aria-label", "note");
-  nl.appendChild(el("i", null, "📝"));
-  if (note && !openNote[nk]) nl.appendChild(el("span", null, note));
-  nl.onclick = function () { openNote[nk] = !openNote[nk]; render(); if (openNote[nk]) { var t = document.querySelector('textarea[data-k="' + CSS.escape(nk) + '"]'); if (t) t.focus(); } };
-  c.appendChild(nl);
-  if (openNote[nk]) {
-    var ta = el("textarea", "note"); ta.value = note; ta.dataset.k = nk; ta.placeholder = "note…";
-    ta.oninput = function () {
-      db.notes = db.notes || {};
-      if (ta.value.trim()) db.notes[nk] = ta.value; else delete db.notes[nk];
-      save();
-      nl.classList.toggle("has", !!ta.value.trim());
-    };
-    c.appendChild(ta);
-  }
-
   var row = el("div", "row");
   row.appendChild(stepper("w", "decimal", function (dir) { e.w = bumpW(e.w, dir); }));
   row.appendChild(stepper("r", "numeric", function (dir) { e.r = String(Math.max(0, (parseInt(e.r, 10) || 0) + dir)); }));
@@ -507,6 +490,24 @@ function card(prog, item) {
   else if (hasReps(e) && +e.r < REP_MIN && cmp.dr >= 0) { rl.className = "lo"; rl.textContent = "< " + REP_MIN; }
   dl.appendChild(wl); dl.appendChild(rl); dl.appendChild(el("div"));
   c.appendChild(dl);
+  // note line under the weight/reps row: shows the note (or a faint 📝); tap to edit
+  var nl = el("div", "nl" + (note ? " has" : "") + (openNote[nk] ? " open" : ""));
+  nl.setAttribute("role", "button"); nl.setAttribute("aria-label", "note");
+  nl.appendChild(el("i", null, "📝"));
+  if (note && !openNote[nk]) nl.appendChild(el("span", null, note));
+  nl.onclick = function () { openNote[nk] = !openNote[nk]; render(); if (openNote[nk]) { var t = document.querySelector('textarea[data-k="' + CSS.escape(nk) + '"]'); if (t) t.focus(); } };
+  c.appendChild(nl);
+  if (openNote[nk]) {
+    var ta = el("textarea", "note"); ta.value = note; ta.dataset.k = nk; ta.placeholder = "note…";
+    ta.oninput = function () {
+      db.notes = db.notes || {};
+      if (ta.value.trim()) db.notes[nk] = ta.value; else delete db.notes[nk];
+      save();
+      nl.classList.toggle("has", !!ta.value.trim());
+    };
+    c.appendChild(ta);
+  }
+
 
   if (openHist[item.t]) {
     var h = el("div", "hist");
