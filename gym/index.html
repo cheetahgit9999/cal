@@ -45,6 +45,9 @@ button:active{background:#30363d}
 .note:focus{outline:none;border-color:#2f81f7}
 .badge{flex-shrink:0;font-size:12px;font-weight:800;padding:2px 9px;border-radius:20px}
 .badge.up{background:#2386363d;color:#3fb950}.badge.dn{background:#f851492e;color:#f85149}
+.badge.pr{background:#3b2a07;color:#e3b341}
+button.badge.save{border:1px solid #3fb950;background:#238636;color:#fff;padding:4px 10px;animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 #3fb95066}50%{box-shadow:0 0 0 5px #3fb95000}}
 .card.pr{box-shadow:inset 4px 0 0 #3fb950}.card.rg{box-shadow:inset 4px 0 0 #f85149}
 .game{display:flex;justify-content:center;gap:6px;margin:14px 0 0;font-size:13px;font-weight:800;font-variant-numeric:tabular-nums}
 .game span{padding:3px 10px;border-radius:20px;background:#21262d;color:#adbac7}
@@ -352,12 +355,35 @@ function bumpW(w, dir) {
 }
 function hasReps(e) { return e && e.r !== "" && e.r != null; }
 // change vs the last session (or the program's starting numbers): dir 1 = progressive overload, -1 = went down
+// ===== saved PRs, shared by the same exercise on every day =====
+// "3. Lateral Raise x2" (TUE) and "4. Lateral Raise x2" (FRI) are one exercise: number, 🔺, (notes) and xN are ignored.
+function baseName(t) {
+  return String(t).replace(/^\s*\d+\.\s*/, "").replace(/🔺/g, "").replace(/\([^)]*\)/g, " ").trim().replace(/\s+x\d+$/i, "").replace(/\s+/g, " ").trim().toLowerCase();
+}
+// db.prs[base] = [{ w, r, at }] sorted by date; at most one save per date
+function prAsOf(base, k, inclusive) {
+  var list = (db.prs && db.prs[base]) || [], hit = null;
+  list.forEach(function (x) { if (inclusive ? x.at <= k : x.at < k) hit = x; });
+  return hit;
+}
+function savePR(item, e) {
+  var b = baseName(item.t);
+  db.prs = db.prs || {};
+  var list = (db.prs[b] = (db.prs[b] || []).filter(function (x) { return x.at !== cur; }));
+  list.push({ w: e.w, r: String(e.r), at: cur });
+  list.sort(function (a, z) { return a.at < z.at ? -1 : 1; });
+  save();
+}
 function compare(prog, item, k, e) {
-  var last = lastFor(prog, item.t, k), b = last ? last.e : { w: item.w, r: item.r };
+  // the target to beat: the last PR saved before this date, else last session of this day, else the program's numbers
+  var pr = prAsOf(baseName(item.t), k, false), last = pr ? null : lastFor(prog, item.t, k);
+  var b = pr ? pr : last ? last.e : { w: item.w, r: item.r };
   var dw = wSum(e.w) - wSum(b.w), dr = hasReps(e) && hasReps(b) ? +e.r - +b.r : 0;
   dw = Math.round(dw * 100) / 100;
   var dir = dw > 0 ? 1 : dw < 0 ? -1 : dr > 0 ? 1 : dr < 0 ? -1 : 0;
-  return { dw: dw, dr: dr, dir: dir, base: b, hasLast: !!last };
+  var today = prAsOf(baseName(item.t), k, true);
+  var savedNow = !!(today && today.at === k && String(today.w) === String(e.w) && String(today.r) === String(e.r));
+  return { dw: dw, dr: dr, dir: dir, base: b, hasLast: !!(pr || last), isPR: !!pr, savedNow: savedNow };
 }
 
 // ===== history =====
@@ -372,8 +398,10 @@ function lastFor(prog, name, before) {
 function entryFor(prog, item, k) {
   var L = dp(k, prog);
   if (L && L.ex[item.t]) return L.ex[item.t];
-  var last = lastFor(prog, item.t, k);
-  return { w: last ? last.e.w : item.w, r: last ? String(last.e.r) : item.r, d: 0 };
+  // start from whichever is newer: a saved PR (from any day with this exercise) or this day's last session
+  var last = lastFor(prog, item.t, k), pr = prAsOf(baseName(item.t), k, true);
+  var src = pr && (!last || pr.at >= last.day) ? pr : last ? last.e : null;
+  return { w: src ? src.w : item.w, r: src ? String(src.r) : item.r, d: 0 };
 }
 function persist(prog, item, e) {
   dp(cur, prog, true).ex[item.t] = e;
@@ -456,7 +484,17 @@ function card(prog, item) {
   nb.onclick = toggleNote;
   nw.appendChild(nm); nw.appendChild(nb);
   nr.appendChild(nw);
-  if (cmp.dir) nr.appendChild(el("span", "badge " + (cmp.dir > 0 ? "up" : "dn"), cmp.dir > 0 ? "▲ ขึ้นแล้ว" : "▼ ลดลง"));
+  if (cmp.savedNow) nr.appendChild(el("span", "badge pr", "🏆 PR"));
+  else if (cmp.dir > 0) {
+    var sv = el("button", "badge save", "💾 เซฟ PR");
+    sv.onclick = function () {
+      persist(prog, item, e); savePR(item, e); render();
+      var b = document.querySelector('.card[data-i="' + PROGRAM[prog].ex.indexOf(item) + '"] .badge.pr');
+      if (b) { var r = b.getBoundingClientRect(); floatText(r.left + r.width / 2, r.top, "🏆 NEW PR", true); burst(r.left + r.width / 2, r.top + 10, 50, true); }
+      try { if (navigator.vibrate) navigator.vibrate([40, 30, 120]); } catch (x) {}
+    };
+    nr.appendChild(sv);
+  } else if (cmp.dir < 0) nr.appendChild(el("span", "badge dn", "▼ ลดลง"));
   c.appendChild(nr);
   var row = el("div", "row");
   row.appendChild(stepper("w", "decimal", function (dir) { e.w = bumpW(e.w, dir); }));
@@ -802,6 +840,7 @@ function exportText() {
   out.push("- Exported: " + TODAY + " (Asia/Bangkok)");
   out.push("- Rule: rep range " + REP_MIN + "–" + REP_MAX + ". Reaching " + REP_BUMP + "+ reps means increase the weight next session.");
   out.push("- Weight is in kg. \"50+15\" means 50 + 15 = 65 kg total. Weight and reps are logged once per exercise; \"Sets done\" is how many sets were ticked.");
+  out.push("- \"Saved PR\" = numbers the user explicitly saved as their new PR; the same exercise on other days starts from it.");
   out.push("- Est. 1RM uses the Epley formula: total kg × (1 + reps / 30).");
   ORDER.forEach(function (p) {
     var P = PROGRAM[p];
@@ -816,6 +855,8 @@ function exportText() {
       var rows = pd.filter(function (d) { return hasReps(dp(d, p).ex[it.t]); });
       out.push(""); out.push("### " + it.t);
       var nt = noteOf(p, it.t); if (nt) { out.push(""); out.push("Note: " + nt.replace(/\n+/g, " / ")); }
+      var prl = (db.prs && db.prs[baseName(it.t)]) || [];
+      if (prl.length) { out.push(""); out.push("Saved PRs (shared with every day that has this exercise): " + prl.map(function (x) { return x.at + " " + x.w + "×" + x.r; }).join(", ")); }
       if (!rows.length) { out.push(""); out.push("No sessions logged."); return; }
       out.push(""); out.push("| Date | Weight (kg) | Total kg | Reps | Sets done | Est. 1RM | vs previous |");
       out.push("|---|---|---|---|---|---|---|");
