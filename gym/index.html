@@ -325,10 +325,11 @@ try { timer = JSON.parse(localStorage.getItem(TKEY)); } catch (e) {}
 function saveTimer() { try { timer ? localStorage.setItem(TKEY, JSON.stringify(timer)) : localStorage.removeItem(TKEY); } catch (e) {} }
 function startRest(ex) {
   try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch (e) {}
-  timer = { ex: ex, start: Date.now(), popped: false };
+  if (timer) cancelNags(timer);
+  timer = { ex: ex, start: Date.now(), popped: false, seq: "r" + Date.now().toString(36), sent: 0 };
   saveTimer(); closePop(); wake(true);
 }
-function stopRest() { timer = null; saveTimer(); closePop(); wake(false); updateTimer(); }
+function stopRest() { if (timer) cancelNags(timer); timer = null; saveTimer(); closePop(); wake(false); updateTimer(); }
 function wake(on) {
   try {
     if (on && !lock && navigator.wakeLock) navigator.wakeLock.request("screen").then(function (l) { lock = l; l.addEventListener("release", function () { lock = null; }); }).catch(function () {});
@@ -364,6 +365,7 @@ function updateTimer() {
   document.getElementById("pclk").textContent = clock(sec);
   document.getElementById("tnext").textContent = nextText();
   document.getElementById("tpb").style.width = Math.min(100, sec / REST_GOAL * 100) + "%";
+  topUpNags();
 }
 setInterval(updateTimer, 250);
 document.addEventListener("visibilitychange", function () { updateTimer(); if (timer && document.visibilityState === "visible") wake(true); });
@@ -380,13 +382,46 @@ var IKEY = "gym.ios", ios = { on: false, name: "Gym Rest" };
 try { var _i = JSON.parse(localStorage.getItem(IKEY)); if (_i) ios = _i; } catch (e) {}
 function saveCfg() { try { localStorage.setItem(NKEY, JSON.stringify(push)); localStorage.setItem(IKEY, JSON.stringify(ios)); } catch (e) {} }
 saveCfg();
-function sendPush(delayed) {
-  var q = "title=" + encodeURIComponent(delayed ? "3:00 ✓" : "test ✓") + "&priority=high&tags=muscle";
-  if (delayed) q += "&delay=3m";
-  if (/^https?:/.test(location.href)) q += "&click=" + encodeURIComponent(location.href.split("#")[0]);
-  return fetch("https://ntfy.sh/" + push.topic + "?" + q, { method: "POST", keepalive: true, body: delayed ? nextText() : "ok" })
+function sendPush() {
+  return fetch("https://ntfy.sh/" + push.topic + "?title=" + encodeURIComponent("test ✓"), { method: "POST", body: "ok" })
     .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return true; })
-    .catch(function (e) { if (!delayed) alert(e.message); return false; });
+    .catch(function (e) { alert(e.message); return false; });
+}
+
+// Rest reminders: at 3:00, then every 15 s until the next ✓.
+// The page can't run while iOS has it in the background, so reminders are scheduled ahead on ntfy.sh
+// (one sequence ID each) and the ones not yet delivered are cancelled on the next ✓ / ✕.
+// NAG_BATCH per ✓ keeps within ntfy.sh's free rate limits; while the page is open it keeps adding more.
+var NAG_EVERY = 15, NAG_BATCH = 8, NAG_MAX = 60, nagBusy = false;
+function nagDue(t, i) { return t.start + (REST_GOAL + NAG_EVERY * i) * 1000; }
+function scheduleNags(t, from, count) {
+  if (!push.on || !t) return Promise.resolve();
+  var click = /^https?:/.test(location.href) ? "&click=" + encodeURIComponent(location.href.split("#")[0]) : "";
+  var jobs = [];
+  for (var i = from; i < Math.min(from + count, NAG_MAX); i++) {
+    var title = (i === 0 ? "3:00 ✓" : "⏰ " + clock(REST_GOAL + NAG_EVERY * i));
+    var q = "title=" + encodeURIComponent(title) + "&priority=high&tags=muscle&delay=" + Math.floor(nagDue(t, i) / 1000) + click;
+    jobs.push(fetch("https://ntfy.sh/" + push.topic + "/" + t.seq + "-" + i + "?" + q, { method: "POST", keepalive: true, body: nextText() }).catch(function () {}));
+  }
+  t.sent = Math.max(t.sent || 0, Math.min(from + count, NAG_MAX));
+  saveTimer();
+  return Promise.all(jobs);
+}
+function cancelNags(t) {
+  if (!t || !t.seq || !t.sent) return;
+  var now = Date.now();
+  for (var i = 0; i < t.sent; i++) {
+    if (nagDue(t, i) > now - 2000) fetch("https://ntfy.sh/" + push.topic + "/" + t.seq + "-" + i, { method: "DELETE", keepalive: true }).catch(function () {});
+  }
+  t.sent = 0;
+}
+// page open on screen: keep the chain going so it never runs out
+function topUpNags() {
+  if (!push.on || !timer || !timer.seq || nagBusy || document.visibilityState === "hidden") return;
+  if (!timer.sent || timer.sent >= NAG_MAX) return;
+  if (nagDue(timer, timer.sent - 1) - Date.now() > 60000) return;
+  nagBusy = true;
+  scheduleNags(timer, timer.sent, 4).then(function () { nagBusy = false; });
 }
 function runShortcut() {
   var url = "shortcuts://x-callback-url/run-shortcut?name=" + encodeURIComponent(ios.name || "Gym Rest");
@@ -395,7 +430,7 @@ function runShortcut() {
 }
 // ntfy first: leaving for Shortcuts right away could cancel the request
 function alertPhone() {
-  var sent = push.on ? sendPush(true) : Promise.resolve();
+  var sent = scheduleNags(timer, 0, NAG_BATCH);
   if (ios.on) Promise.race([sent, new Promise(function (ok) { setTimeout(ok, 2500); })]).then(runShortcut);
 }
 
@@ -477,7 +512,7 @@ document.getElementById("pushCopy").onclick = function () {
   pushTopic.select();
   (navigator.clipboard ? navigator.clipboard.writeText(push.topic) : Promise.reject()).catch(function () { document.execCommand("copy"); });
 };
-document.getElementById("pushTest").onclick = function () { sendPush(false); };
+document.getElementById("pushTest").onclick = function () { sendPush(); };
 document.getElementById("iosTest").onclick = runShortcut;
 render();
 </script>
