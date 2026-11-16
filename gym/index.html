@@ -91,6 +91,16 @@ input[type=date]{background:#0b0e13;border:1px solid #30363d;border-radius:8px;p
 .hist div{display:flex;justify-content:space-between;gap:10px;padding:3px 0;border-bottom:1px solid #1b2028;font-variant-numeric:tabular-nums}
 .rest{color:#6e7681;padding:30px 0;text-align:center;font-size:16px}
 .cardio{display:flex;align-items:center;justify-content:space-between}
+.ios{margin-top:22px;border:1px solid #21262d;border-radius:12px;background:#151a21;padding:12px}
+.ios label{display:flex;align-items:center;gap:10px;font-weight:600;cursor:pointer}
+.ios input[type=checkbox]{width:22px;height:22px;accent-color:#238636}
+.ios .rw{display:flex;gap:8px;align-items:center;margin-top:10px;font-size:13px;color:#8b949e}
+.ios .rw input{flex:1;min-width:0;background:#0b0e13;border:1px solid #30363d;border-radius:8px;padding:6px 8px}
+.ios details{margin-top:10px;font-size:13px;color:#adbac7}
+.ios summary{cursor:pointer;color:#2f81f7}
+.ios ol{padding-left:20px;margin:8px 0}
+.ios li{margin-bottom:4px}
+.ios code{background:#0b0e13;padding:1px 5px;border-radius:4px}
 .foot{margin-top:24px;display:flex;gap:8px;flex-wrap:wrap;color:#6e7681;font-size:12px;align-items:center}
 </style>
 </head>
@@ -109,6 +119,22 @@ input[type=date]{background:#0b0e13;border:1px solid #30363d;border-radius:8px;p
   <div class="rule">เรนจ์ <b>5–10 reps</b> · เล่นได้ <b>11 reps</b> เมื่อไหร่ = ครั้งหน้า<b>เพิ่มน้ำหนัก</b> · กด ✓ เมื่อทำเซ็ตนั้นเสร็จ (ตัวเลขเดิมจากครั้งก่อนเติมให้แล้ว)</div>
 
   <div id="list"></div>
+
+  <div class="ios">
+    <label><input type="checkbox" id="iosOn"> ⏰ ตั้งเวลาใน iPhone อัตโนมัติทุกครั้งที่กด ✓</label>
+    <div class="rw">ชื่อคำสั่งลัด <input type="text" id="iosName" value="Gym Rest" autocomplete="off"><button id="iosTest">ทดสอบ</button></div>
+    <details>
+      <summary>วิธีตั้งค่าครั้งแรก (ทำครั้งเดียว ~1 นาที)</summary>
+      <ol>
+        <li>เปิดแอป <b>คำสั่งลัด (Shortcuts)</b> → แตะ <b>+</b></li>
+        <li>แตะ <b>เพิ่มการทำงาน</b> → ค้นหา <b>เริ่มตัวจับเวลา</b> (Start Timer)</li>
+        <li>ตั้งเป็น <b>3 นาที</b></li>
+        <li>แตะชื่อด้านบน เปลี่ยนเป็น <code>Gym Rest</code> (ต้องตรงกับช่องด้านบน) → <b>เสร็จสิ้น</b></li>
+        <li>กลับมาหน้านี้ ติ๊กช่อง ⏰ แล้วกด <b>ทดสอบ</b> — ถ้า Safari ถามว่าจะเปิดใน "คำสั่งลัด" ไหม ให้กด <b>เปิด</b></li>
+      </ol>
+      หลังจากนั้นกด ✓ ปุ๊บ iPhone จะเปิดคำสั่งลัดแวบเดียว ตั้งตัวจับเวลา 3 นาทีในแอปนาฬิกา แล้วเด้งกลับมาหน้านี้ — ไปเล่นแอปอื่นหรือล็อกจอได้ ครบ 3 นาทีนาฬิกาจะดังเอง
+    </details>
+  </div>
 
   <div class="foot">
     <button id="exp">Export ข้อมูล</button>
@@ -311,6 +337,17 @@ function findNext() {
   return null;
 }
 
+// ===== iPhone: run a Shortcut that starts a 3-min Clock timer (rings even when locked / in other apps) =====
+var IKEY = "gym.ios", ios = { on: false, name: "Gym Rest" };
+try { var _i = JSON.parse(localStorage.getItem(IKEY)); if (_i) ios = _i; } catch (e) {}
+function saveIos() { try { localStorage.setItem(IKEY, JSON.stringify(ios)); } catch (e) {} }
+function runShortcut() {
+  var url = "shortcuts://x-callback-url/run-shortcut?name=" + encodeURIComponent(ios.name || "Gym Rest");
+  // from Safari, come straight back here; a home-screen web app can't be targeted, so use the ◀ back link instead
+  if (!navigator.standalone) url += "&x-success=" + encodeURIComponent(location.href.split("#")[0]);
+  location.href = url;
+}
+
 // ===== rest timer: counts UP from 0:00 after each ✓, never stops by itself =====
 var REST_GOAL = 180, TKEY = "gym.timer";
 var timer = null;
@@ -423,6 +460,7 @@ function card(prog, item, sets) {
       if (s.done) startRest(id, item.t, i, sets.length);
       else if (timer && timer.id === id) stopRest();
       render();
+      if (s.done && ios.on) runShortcut();
     };
     row.appendChild(ok);
     var tag = el("div", "tag");
@@ -490,6 +528,11 @@ document.getElementById("prev").onclick = function () { cur = shift(cur, -1); re
 document.getElementById("next").onclick = function () { cur = shift(cur, 1); render(); };
 document.getElementById("tstop").onclick = stopRest;
 document.getElementById("prest").onclick = closePop;
+var iosOn = document.getElementById("iosOn"), iosName = document.getElementById("iosName");
+iosOn.checked = !!ios.on; iosName.value = ios.name || "Gym Rest";
+iosOn.onchange = function () { ios.on = iosOn.checked; saveIos(); };
+iosName.oninput = function () { ios.name = iosName.value.trim(); saveIos(); };
+document.getElementById("iosTest").onclick = runShortcut;
 document.getElementById("pgo").onclick = function () {
   closePop();
   var n = document.querySelector(".set.nxt");
