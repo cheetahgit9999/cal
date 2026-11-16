@@ -115,7 +115,9 @@ button.badge.save{border:1px solid #3fb950;background:#238636;color:#fff;padding
 #cfg{display:none;margin-top:10px;border:1px solid #21262d;border-radius:12px;padding:10px;font-size:13px;color:#8b949e}
 #cfg.on{display:block}
 #cfg .r{display:flex;gap:6px;align-items:center;margin:6px 0}
-#cfg input[type=text]{flex:1;min-width:0;background:#0b0e13;border:1px solid #30363d;border-radius:8px;padding:5px 7px}
+#cfg .gs{font-size:12px;color:#6e7681;margin:-2px 0 6px 26px;word-break:break-all}
+#cfg .gs a{color:#58a6ff}
+#cfg input[type=text],#cfg input[type=password]{flex:1;min-width:0;background:#0b0e13;border:1px solid #30363d;border-radius:8px;padding:5px 7px}
 #cfg input[type=checkbox]{width:20px;height:20px;accent-color:#238636}
 #dock{position:fixed;left:0;right:0;bottom:0;background:#161b22;border-top:1px solid #30363d;padding:8px 14px calc(8px + env(safe-area-inset-bottom));z-index:9}
 #dock.off{display:none}
@@ -161,6 +163,8 @@ button.muted{background:#3d1418;border-color:#7d2a30}
   <div id="cfg">
     <div class="r"><input type="checkbox" id="pushOn"> ntfy <input type="text" id="pushTopic" readonly><button id="pushCopy">copy</button><button id="pushTest">test</button></div>
     <div class="r"><input type="checkbox" id="iosOn"> Shortcuts <input type="text" id="iosName"><button id="iosTest">test</button></div>
+    <div class="r"><span style="width:20px;text-align:center">☁️</span> GitHub <input type="password" id="ghTok" placeholder="token" autocomplete="off"><button id="ghSync">sync</button></div>
+    <div class="gs" id="ghStat"></div>
   </div>
 </div>
 
@@ -346,7 +350,7 @@ if (!db.notesSeeded) {
   db.notesSeeded = 1;
   try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) {}
 }
-function save() { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) { alert(e.message); } }
+function save() { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) { alert(e.message); } if (window.queueSync) queueSync(); }
 
 // ===== dates (Bangkok) =====
 var TZ = "Asia/Bangkok";
@@ -1093,6 +1097,80 @@ document.getElementById("tmute").onclick = function () { setPush(!push.on); };
 document.getElementById("fmute").onclick = function () { setPush(!push.on); };
 paintMute();
 flushKill(); // finish any cancels left over from last time
+
+// ===== auto-publish: keep gym/data.md in the GitHub repo up to date, so any AI can read it at a fixed URL =====
+// One-time setup: a fine-grained token with "Contents: Read and write" on this repo only, pasted under ⚙.
+var GH = { repo: "cheetahgit9999/cal", branch: "main", path: "gym/data.md" };
+var DATA_URL = "https://cheetahgit9999.github.io/cal/gym/data.md";
+var GKEY = "gym.gh", gh = { token: "", hash: "", last: "", err: "" };
+try { var _g = JSON.parse(localStorage.getItem(GKEY)); if (_g) gh = _g; } catch (e) {}
+function saveGh() { try { localStorage.setItem(GKEY, JSON.stringify(gh)); } catch (e) {} }
+function hashStr(t) { var h = 0; for (var i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) | 0; return String(h); }
+function dataDoc() {
+  var ws = weekOf(TODAY);
+  return [
+    "# Gym training data — auto-updated",
+    "",
+    "This page is my live gym log, published automatically from my tracker every time I log a set.",
+    "If you are an AI reading this: use it to understand how I train and how I'm progressing.",
+    "",
+    "Sections: 1) this week's summary, 2) last week's summary, 3) full history per exercise, 4) raw JSON.",
+    "",
+    "---",
+    "",
+    "## 1) This week",
+    "",
+    weekText(weekData(ws)).replace(/^# /, "### "),
+    "",
+    "---",
+    "",
+    "## 2) Last week",
+    "",
+    weekText(weekData(shift(ws, -7))).replace(/^# /, "### "),
+    "",
+    "---",
+    "",
+    "## 3–4) Full history and raw data",
+    "",
+    exportText().replace(/^# .*\n/, "")
+  ].join("\n");
+}
+var syncT = null, syncing = false;
+function queueSync() { if (!gh.token) return; clearTimeout(syncT); syncT = setTimeout(syncNow, 45000); }
+function paintGh() {
+  var st = document.getElementById("ghStat"); if (!st) return;
+  st.innerHTML = "";
+  if (!gh.token) { st.textContent = "ใส่ token เพื่ออัปโหลดข้อมูลขึ้นเว็บอัตโนมัติ"; return; }
+  st.appendChild(document.createTextNode((gh.err ? "⚠️ " + gh.err : gh.last ? "✓ อัปเดตล่าสุด " + new Date(gh.last).toLocaleString("en-GB", { timeZone: TZ }) : "รอ sync…") + " · "));
+  var a = el("a", null, DATA_URL); a.href = DATA_URL; a.target = "_blank"; st.appendChild(a);
+}
+function syncNow(force) {
+  clearTimeout(syncT);
+  if (!gh.token || syncing) return Promise.resolve();
+  var doc = dataDoc(), h = hashStr(doc);
+  if (force !== true && h === gh.hash) return Promise.resolve();
+  syncing = true;
+  var api = "https://api.github.com/repos/" + GH.repo + "/contents/" + GH.path;
+  var hd = { "Authorization": "Bearer " + gh.token, "Accept": "application/vnd.github+json" };
+  return fetch(api + "?ref=" + GH.branch, { headers: hd, cache: "no-store" })
+    .then(function (r) { if (r.status === 404) return null; if (!r.ok) throw new Error("GitHub " + r.status); return r.json(); })
+    .then(function (cur_) {
+      var body = { message: "gym: data sync " + TODAY, branch: GH.branch, content: btoa(unescape(encodeURIComponent(doc))) };
+      if (cur_ && cur_.sha) body.sha = cur_.sha;
+      return fetch(api, { method: "PUT", headers: hd, body: JSON.stringify(body) });
+    })
+    .then(function (r) { if (!r.ok) throw new Error("GitHub " + r.status + (r.status === 401 ? " (token ผิด/หมดอายุ)" : r.status === 403 || r.status === 404 ? " (token ไม่มีสิทธิ์เขียน repo นี้)" : "")); gh.hash = h; gh.last = Date.now(); gh.err = ""; })
+    .catch(function (e) { gh.err = e.message; })
+    .then(function () { syncing = false; saveGh(); paintGh(); });
+}
+window.queueSync = queueSync;
+var ghTok = document.getElementById("ghTok");
+ghTok.value = gh.token ? "••••••••" : "";
+ghTok.onchange = function () { var v = ghTok.value.trim(); if (v && v.indexOf("•") < 0) { gh.token = v; gh.hash = ""; gh.err = ""; } else if (!v) { gh.token = ""; } saveGh(); ghTok.value = gh.token ? "••••••••" : ""; paintGh(); if (gh.token) syncNow(true); };
+document.getElementById("ghSync").onclick = function () { syncNow(true); };
+document.addEventListener("visibilitychange", function () { if (document.visibilityState === "hidden") syncNow(); });
+paintGh();
+if (gh.token) setTimeout(syncNow, 3000);
 document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") flushKill(); });
 iosOn.onchange = function () { ios.on = iosOn.checked; saveCfg(); };
 iosName.oninput = function () { ios.name = iosName.value.trim(); saveCfg(); };
