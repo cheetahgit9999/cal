@@ -105,6 +105,7 @@ button:active{background:#30363d}
 #timer .clk{font-size:34px;font-weight:750;font-variant-numeric:tabular-nums;color:#d29922;min-width:92px}
 #timer.ready .clk{color:#3fb950}
 #timer .tx{flex:1;min-width:0;font-size:13.5px;color:#adbac7}
+button.muted{background:#3d1418;border-color:#7d2a30}
 #timer .tx div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #timer .pb{height:4px;background:#30363d;border-radius:2px;margin-top:6px;overflow:hidden}
 #timer .pb i{display:block;height:100%;background:#d29922;width:0}
@@ -131,6 +132,7 @@ button:active{background:#30363d}
   <div class="foot">
     <button id="exp">Export</button>
     <button id="imp">Import</button>
+    <button id="fmute">🔔</button>
     <button id="cfgBtn">⚙</button>
     <input type="file" id="impFile" accept=".md,.json,.txt,text/plain,application/json" hidden>
   </div>
@@ -144,6 +146,7 @@ button:active{background:#30363d}
   <div id="timer"><div class="in">
     <div class="clk" id="clk">0:00</div>
     <div class="tx"><div id="tnext"></div><div class="pb"><i id="tpb"></i></div></div>
+    <button id="tmute">🔔</button>
     <button id="tstop">✕</button>
   </div></div>
   <div id="barSlot"></div>
@@ -656,11 +659,10 @@ var TKEY = "gym.timer", timer = null, lock = null;
 try { timer = JSON.parse(localStorage.getItem(TKEY)); } catch (e) {}
 function saveTimer() { try { timer ? localStorage.setItem(TKEY, JSON.stringify(timer)) : localStorage.removeItem(TKEY); } catch (e) {} }
 function startRest(prog, ex) {
-  if (timer) cancelNags(timer);
-  timer = { ex: ex, prog: prog, date: cur, start: Date.now(), popped: false, seq: "r" + Date.now().toString(36), sent: 0 };
+  timer = { ex: ex, prog: prog, date: cur, start: Date.now(), popped: false, sent: 0 };
   saveTimer(); closePop(); wake(true);
 }
-function stopRest() { if (timer) cancelNags(timer); timer = null; saveTimer(); closePop(); wake(false); updateTimer(); }
+function stopRest() { cancelAllNags(); timer = null; saveTimer(); closePop(); wake(false); updateTimer(); }
 function wake(on) {
   try {
     if (on && !lock && navigator.wakeLock) navigator.wakeLock.request("screen").then(function (l) { lock = l; l.addEventListener("release", function () { lock = null; }); }).catch(function () {});
@@ -711,39 +713,76 @@ function sendPush() {
 }
 
 // Rest reminders: at 3:00, then every 15 s until the next ✓.
-// The page can't run while iOS has it in the background, so reminders are scheduled ahead on ntfy.sh
-// (one sequence ID each) and the ones not yet delivered are cancelled on the next ✓ / ✕.
-// NAG_BATCH per ✓ keeps within ntfy.sh's free rate limits; while the page is open it keeps adding more.
-var NAG_EVERY = 15, NAG_BATCH = 8, NAG_MAX = 60, nagBusy = false;
+// iOS pauses the page in the background, so reminders are scheduled ahead on ntfy.sh.
+// Each reminder uses a FIXED slot ID (rest-0, rest-1, …): a new round simply replaces the old one
+// (ntfy replaces a scheduled message with the same sequence ID), so nothing piles up across rounds,
+// tabs or reloads. Slots that must go away are DELETEd, and retried until ntfy confirms.
+var NAG_EVERY = 15, NAG_BATCH = 8, NAG_MAX = 40, nagBusy = false, QKEY = "gym.nagq";
+var nq = { pend: {}, kill: {} }; // pend[slot] = due ms (scheduled, not delivered yet); kill[slot] = due ms (must be deleted)
+try { var _q = JSON.parse(localStorage.getItem(QKEY)); if (_q && _q.pend) nq = _q; } catch (e) {}
+function saveQ() { try { localStorage.setItem(QKEY, JSON.stringify(nq)); } catch (e) {} }
+function slotUrl(i) { return "https://ntfy.sh/" + push.topic + "/rest-" + i; }
 function nagDue(t, i) { return t.start + (REST_GOAL + NAG_EVERY * i) * 1000; }
+function prune() { var now = Date.now(); ["pend", "kill"].forEach(function (b) { Object.keys(nq[b]).forEach(function (i) { if (nq[b][i] < now - 5000) delete nq[b][i]; }); }); }
 function scheduleNags(t, from, count) {
   if (!push.on || !t) return Promise.resolve();
+  prune();
   var click = /^https?:/.test(location.href) ? "&click=" + encodeURIComponent(location.href.split("#")[0]) : "";
-  var jobs = [];
-  for (var i = from; i < Math.min(from + count, NAG_MAX); i++) {
-    var title = (i === 0 ? "3:00 ✓" : "⏰ " + clock(REST_GOAL + NAG_EVERY * i));
-    var q = "title=" + encodeURIComponent(title) + "&priority=high&tags=muscle&delay=" + Math.floor(nagDue(t, i) / 1000) + click;
-    jobs.push(fetch("https://ntfy.sh/" + push.topic + "/" + t.seq + "-" + i + "?" + q, { method: "POST", keepalive: true, body: nextText() }).catch(function () {}));
+  var jobs = [], end = Math.min(from + count, NAG_MAX);
+  for (var i = from; i < end; i++) {
+    var title = (i === 0 ? "3:00 ✓" : "⏰ " + clock(REST_GOAL + NAG_EVERY * i)), due = nagDue(t, i);
+    var q = "title=" + encodeURIComponent(title) + "&priority=high&tags=muscle&delay=" + Math.floor(due / 1000) + click;
+    delete nq.kill[i]; nq.pend[i] = due;
+    jobs.push(fetch(slotUrl(i) + "?" + q, { method: "POST", keepalive: true, body: nextText() }).catch(function () {}));
   }
-  t.sent = Math.max(t.sent || 0, Math.min(from + count, NAG_MAX));
-  saveTimer();
+  if (from === 0) Object.keys(nq.pend).forEach(function (k) { if (+k >= end) { nq.kill[k] = nq.pend[k]; delete nq.pend[k]; } }); // leftovers of an older, longer round
+  t.sent = Math.max(t.sent || 0, end);
+  saveTimer(); saveQ(); flushKill();
   return Promise.all(jobs);
 }
-function cancelNags(t) {
-  if (!t || !t.seq || !t.sent) return;
-  var now = Date.now();
-  for (var i = 0; i < t.sent; i++) {
-    if (nagDue(t, i) > now - 2000) fetch("https://ntfy.sh/" + push.topic + "/" + t.seq + "-" + i, { method: "DELETE", keepalive: true }).catch(function () {});
-  }
-  t.sent = 0;
+function cancelAllNags() {
+  Object.keys(nq.pend).forEach(function (k) { nq.kill[k] = nq.pend[k]; });
+  nq.pend = {};
+  if (timer) timer.sent = NAG_MAX; // stop topping up this round
+  saveQ(); flushKill();
 }
-// page open on screen: keep the chain going so it never runs out
+var killTry = null;
+function flushKill() {
+  prune(); saveQ();
+  var ks = Object.keys(nq.kill);
+  if (!ks.length) return;
+  ks.forEach(function (k) {
+    fetch(slotUrl(k), { method: "DELETE", keepalive: true })
+      .then(function (r) { if (r.ok || r.status === 404) { delete nq.kill[k]; saveQ(); } })
+      .catch(function () {});
+  });
+  clearTimeout(killTry); killTry = setTimeout(flushKill, 6000); // retry whatever didn't go through (e.g. rate limit)
+}
+// page open on screen: keep the chain going (up to NAG_MAX)
 function topUpNags() {
-  if (!push.on || !timer || !timer.seq || nagBusy || document.visibilityState === "hidden") return;
+  if (!push.on || !timer || nagBusy || document.visibilityState === "hidden") return;
   if (!timer.sent || timer.sent >= NAG_MAX) return;
   if (nagDue(timer, timer.sent - 1) - Date.now() > 60000) return;
   nagBusy = true;
   scheduleNags(timer, timer.sent, 4).then(function () { nagBusy = false; });
+}
+// 🔕 / 🔔: one tap kills every scheduled reminder and turns ntfy off; tap again to turn it back on
+function setPush(on) {
+  push.on = on; saveCfg();
+  if (!on) cancelAllNags();
+  else if (timer) {
+    var first = 0; while (first < NAG_MAX && nagDue(timer, first) < Date.now() + 10000) first++;
+    timer.sent = first; scheduleNags(timer, first, NAG_BATCH);
+  }
+  var cb = document.getElementById("pushOn"); if (cb) cb.checked = on;
+  paintMute();
+}
+function paintMute() {
+  ["tmute", "fmute"].forEach(function (id) {
+    var b = document.getElementById(id); if (!b) return;
+    b.textContent = push.on ? "🔔" : "🔕"; b.className = push.on ? "" : "muted";
+    b.setAttribute("aria-label", push.on ? "ntfy on — tap to stop all" : "ntfy off — tap to turn on");
+  });
 }
 function runShortcut() {
   var url = "shortcuts://x-callback-url/run-shortcut?name=" + encodeURIComponent(ios.name || "Gym Rest");
@@ -829,7 +868,12 @@ document.getElementById("cfgBtn").onclick = function () { document.getElementByI
 var pushOn = document.getElementById("pushOn"), pushTopic = document.getElementById("pushTopic");
 var iosOn = document.getElementById("iosOn"), iosName = document.getElementById("iosName");
 pushOn.checked = !!push.on; pushTopic.value = push.topic; iosOn.checked = !!ios.on; iosName.value = ios.name || "Gym Rest";
-pushOn.onchange = function () { push.on = pushOn.checked; saveCfg(); };
+pushOn.onchange = function () { setPush(pushOn.checked); };
+document.getElementById("tmute").onclick = function () { setPush(!push.on); };
+document.getElementById("fmute").onclick = function () { setPush(!push.on); };
+paintMute();
+flushKill(); // finish any cancels left over from last time
+document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") flushKill(); });
 iosOn.onchange = function () { ios.on = iosOn.checked; saveCfg(); };
 iosName.oninput = function () { ios.name = iosName.value.trim(); saveCfg(); };
 document.getElementById("pushCopy").onclick = function () {
