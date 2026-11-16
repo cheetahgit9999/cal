@@ -37,6 +37,12 @@ button:active{background:#30363d}
 .dl{display:grid;grid-template-columns:1fr 1fr 64px;gap:8px;margin-top:4px;font-size:12px;font-weight:700;text-align:center;font-variant-numeric:tabular-nums;min-height:16px}
 .dl .up{color:#3fb950}.dl .dn{color:#f85149}.dl .hi{color:#f0883e}.dl .lo{color:#f85149}.dl .was{color:#6e7681;font-weight:500}
 .nmr{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.nmw{display:flex;align-items:flex-start;gap:2px;min-width:0}
+.nb{flex-shrink:0;background:none;border:0;padding:0 6px;margin-top:-2px;font-size:15px;line-height:1.4;opacity:.35;filter:grayscale(1)}
+.nb.has{opacity:1;filter:none}
+.nb.open{opacity:1}
+.note{width:100%;margin:2px 0 10px;min-height:64px;resize:vertical;background:#0b0e13;border:1px solid #30363d;border-radius:10px;padding:8px 10px;font:inherit;font-size:14px;color:#e6edf3}
+.note:focus{outline:none;border-color:#2f81f7}
 .badge{flex-shrink:0;font-size:12px;font-weight:800;padding:2px 9px;border-radius:20px}
 .badge.up{background:#2386363d;color:#3fb950}.badge.dn{background:#f851492e;color:#f85149}
 .card.pr{box-shadow:inset 4px 0 0 #3fb950}.card.rg{box-shadow:inset 4px 0 0 #f85149}
@@ -228,6 +234,7 @@ var RENAMED = {
   }
 };
 function migrate(d) {
+  d.notes = d.notes || {};
   Object.keys(d.log || {}).forEach(function (k) {
     var L = d.log[k];
     if (!L.p) { // older format: one program per date
@@ -257,7 +264,7 @@ function migrate(d) {
 }
 function load() {
   try { var d = JSON.parse(localStorage.getItem(KEY)); if (d && d.log) return migrate(d); } catch (e) {}
-  return { log: {} };
+  return { log: {}, notes: {} };
 }
 var db = load();
 function save() { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) { alert(e.message); } }
@@ -331,7 +338,10 @@ function persist(prog, item, e) {
 }
 
 // ===== render =====
-var openHist = {}, nextUp = null, flashKey = null;
+var openHist = {}, openNote = {}, nextUp = null, flashKey = null;
+// notes belong to an exercise in a program, not to a date
+function noteKey(prog, name) { return prog + "|" + name; }
+function noteOf(prog, name) { return (db.notes && db.notes[noteKey(prog, name)]) || ""; }
 function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
 
 function render() {
@@ -393,11 +403,26 @@ function card(prog, item) {
   var isNext = nextUp && nextUp.t === item.t && nextUp.date === cur && nextUp.prog === prog;
   var cmp = compare(prog, item, cur, e);
   var c = el("div", "card" + (e.d >= item.s ? " all" : isNext ? " cur" : "") + (cmp.dir > 0 ? " pr" : cmp.dir < 0 ? " rg" : ""));
-  var nr = el("div", "nmr"), nm = el("div", "nm", item.t);
+  var nr = el("div", "nmr"), nw = el("div", "nmw"), nm = el("div", "nm", item.t);
   nm.onclick = function () { openHist[item.t] = !openHist[item.t]; render(); };
-  nr.appendChild(nm);
+  var nk = noteKey(prog, item.t), note = noteOf(prog, item.t);
+  var nb = el("button", "nb" + (note ? " has" : "") + (openNote[nk] ? " open" : ""), "📝");
+  nb.setAttribute("aria-label", "note");
+  nb.onclick = function () { openNote[nk] = !openNote[nk]; render(); if (openNote[nk]) { var t = document.querySelector('textarea[data-k="' + CSS.escape(nk) + '"]'); if (t && !note) t.focus(); } };
+  nw.appendChild(nm); nw.appendChild(nb);
+  nr.appendChild(nw);
   if (cmp.dir) nr.appendChild(el("span", "badge " + (cmp.dir > 0 ? "up" : "dn"), cmp.dir > 0 ? "▲ ขึ้นแล้ว" : "▼ ลดลง"));
   c.appendChild(nr);
+  if (openNote[nk]) {
+    var ta = el("textarea", "note"); ta.value = note; ta.dataset.k = nk; ta.placeholder = "note…";
+    ta.oninput = function () {
+      db.notes = db.notes || {};
+      if (ta.value.trim()) db.notes[nk] = ta.value; else delete db.notes[nk];
+      save();
+      nb.classList.toggle("has", !!ta.value.trim());
+    };
+    c.appendChild(ta);
+  }
 
   var row = el("div", "row");
   row.appendChild(stepper("w", "decimal", function (dir) { e.w = bumpW(e.w, dir); }));
@@ -706,6 +731,7 @@ function exportText() {
     P.ex.forEach(function (it) {
       var rows = pd.filter(function (d) { return hasReps(dp(d, p).ex[it.t]); });
       out.push(""); out.push("### " + it.t);
+      var nt = noteOf(p, it.t); if (nt) { out.push(""); out.push("Note: " + nt.replace(/\n+/g, " / ")); }
       if (!rows.length) { out.push(""); out.push("No sessions logged."); return; }
       out.push(""); out.push("| Date | Weight (kg) | Total kg | Reps | Sets done | Est. 1RM | vs previous |");
       out.push("|---|---|---|---|---|---|---|");
