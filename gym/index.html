@@ -150,12 +150,21 @@ var SHORT = { MON: "MON", TUE: "TUE", WED: "WED", THU: "THU", FRI: "FRI", SAT: "
 var REP_MIN = 5, REP_MAX = 10, REP_BUMP = 11, REST_GOAL = 180;
 
 // ===== storage =====
-// log[date] = { prog: "TUE", ex: { "<name>": { w: "50", r: "9", d: 1 } }, cardio: bool }
-// d = sets ticked; one weight/reps per exercise
+// log[date].p[PROG] = { ex: { "<name>": { w: "50", r: "9", d: 1 } }, cardio: bool }
+// d = sets ticked; one weight/reps per exercise. Each program is kept separately per date,
+// so looking at (or training) another day's program never touches what's already logged.
 var KEY = "gym.v2";
 function migrate(d) {
   Object.keys(d.log || {}).forEach(function (k) {
-    var ex = d.log[k].ex || {};
+    var L = d.log[k];
+    if (!L.p) { // older format: one program per date
+      L.p = {};
+      if (L.prog) L.p[L.prog] = { ex: L.ex || {}, cardio: !!L.cardio };
+      delete L.prog; delete L.ex; delete L.cardio;
+    }
+  });
+  Object.keys(d.log || {}).forEach(function (k) { Object.keys(d.log[k].p).forEach(function (pg) {
+    var ex = d.log[k].p[pg].ex = d.log[k].p[pg].ex || {};
     Object.keys(ex).forEach(function (n) {
       var v = ex[n];
       if (Array.isArray(v)) {
@@ -163,7 +172,7 @@ function migrate(d) {
         ex[n] = { w: f.w || "", r: f.r == null ? "" : String(f.r), d: v.filter(function (s) { return s && s.done; }).length };
       }
     });
-  });
+  }); });
   return d;
 }
 function load() {
@@ -185,7 +194,22 @@ function shift(k, n) { return dayKey(new Date(kDate(k).getTime() + n * 86400000)
 function weekdayOf(k) { return ORDER[(kDate(k).getUTCDay() + 6) % 7]; }
 function dLabel(k) { return new Intl.DateTimeFormat("en-GB", { timeZone: TZ, weekday: "short", day: "numeric", month: "short" }).format(kDate(k)); }
 var TODAY = dayKey(new Date()), cur = TODAY;
-function progOf(k) { return (db.log[k] && db.log[k].prog) || weekdayOf(k); }
+function dp(k, prog, create) { // the log of one program on one date
+  if (!db.log[k]) { if (!create) return null; db.log[k] = { p: {} }; }
+  if (!db.log[k].p[prog]) { if (!create) return null; db.log[k].p[prog] = { ex: {} }; }
+  return db.log[k].p[prog];
+}
+// which program tab is shown; remembered for today so a reload (e.g. back from Shortcuts) keeps it
+var VKEY = "gym.view", view = weekdayOf(cur);
+try { var _v = JSON.parse(localStorage.getItem(VKEY)); if (_v && _v.date === cur && PROGRAM[_v.prog]) view = _v.prog; } catch (e) {}
+function setView(pg) { view = pg; try { localStorage.setItem(VKEY, JSON.stringify({ date: cur, prog: pg })); } catch (e) {} }
+function goDate(k) {
+  cur = k;
+  var v = weekdayOf(k);
+  if (timer && timer.date === k && timer.prog) v = timer.prog;
+  else if (db.log[k] && !dp(k, v)) { var ks = Object.keys(db.log[k].p); if (ks.length) v = ks[0]; }
+  setView(v); render();
+}
 
 // ===== weights ("50+15" = 65) =====
 function wSum(w) { return String(w || "").split("+").reduce(function (a, x) { var n = parseFloat(x); return a + (isFinite(n) ? n : 0); }, 0); }
@@ -200,24 +224,21 @@ function hasReps(e) { return e && e.r !== "" && e.r != null; }
 
 // ===== history =====
 function lastFor(prog, name, before) {
-  var days = Object.keys(db.log).filter(function (d) { return d < before && db.log[d].prog === prog; }).sort().reverse();
+  var days = Object.keys(db.log).filter(function (d) { return d < before && dp(d, prog); }).sort().reverse();
   for (var i = 0; i < days.length; i++) {
-    var e = db.log[days[i]].ex && db.log[days[i]].ex[name];
+    var e = dp(days[i], prog).ex[name];
     if (hasReps(e)) return { day: days[i], e: e };
   }
   return null;
 }
 function entryFor(prog, item, k) {
-  var L = db.log[k];
-  if (L && L.prog === prog && L.ex && L.ex[item.t]) return L.ex[item.t];
+  var L = dp(k, prog);
+  if (L && L.ex[item.t]) return L.ex[item.t];
   var last = lastFor(prog, item.t, k);
   return { w: last ? last.e.w : item.w, r: last ? String(last.e.r) : item.r, d: 0 };
 }
 function persist(prog, item, e) {
-  if (!db.log[cur]) db.log[cur] = { prog: prog, ex: {} };
-  db.log[cur].prog = prog;
-  db.log[cur].ex = db.log[cur].ex || {};
-  db.log[cur].ex[item.t] = e;
+  dp(cur, prog, true).ex[item.t] = e;
   save();
 }
 
@@ -226,13 +247,13 @@ var openHist = {}, nextUp = null;
 function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
 
 function render() {
-  var prog = progOf(cur), P = PROGRAM[prog];
+  var prog = view, P = PROGRAM[prog];
   var dl = document.getElementById("dlabel");
   dl.textContent = dLabel(cur); dl.className = "d" + (cur === TODAY ? " t" : "");
   var tabs = document.getElementById("tabs"); tabs.innerHTML = "";
   ORDER.forEach(function (d) {
     var b = el("button", (d === prog ? "on" : "") + (d === weekdayOf(cur) ? " td" : ""), SHORT[d]);
-    b.onclick = function () { switchProg(d); };
+    b.onclick = function () { setView(d); render(); };
     tabs.appendChild(b);
   });
   var list = document.getElementById("list"); list.innerHTML = "";
@@ -240,11 +261,11 @@ function render() {
   list.appendChild(el("div", "ph" + (P.rest ? " dim" : ""), P.label));
   if (P.rest) { updateTimer(); return; }
   if (P.cardio) {
-    var c = el("div", "card"), done = !!(db.log[cur] && db.log[cur].cardio);
+    var c = el("div", "card"), done = !!(dp(cur, prog) && dp(cur, prog).cardio);
     c.style.display = "flex"; c.style.justifyContent = "space-between"; c.style.alignItems = "center";
     c.appendChild(el("div", "nm", P.cardio));
     var b = el("button", "ok" + (done ? " on" : ""), "✓"); b.style.width = "64px";
-    b.onclick = function () { if (!db.log[cur]) db.log[cur] = { prog: prog, ex: {} }; db.log[cur].cardio = !done; save(); render(); };
+    b.onclick = function () { dp(cur, prog, true).cardio = !done; save(); render(); };
     c.appendChild(b); if (done) c.classList.add("all");
     list.appendChild(c); updateTimer(); return;
   }
@@ -254,7 +275,8 @@ function render() {
 
 function card(prog, item) {
   var e = entryFor(prog, item, cur);
-  var c = el("div", "card" + (e.d >= item.s ? " all" : nextUp && nextUp.t === item.t ? " cur" : ""));
+  var isNext = nextUp && nextUp.t === item.t && nextUp.date === cur && nextUp.prog === prog;
+  var c = el("div", "card" + (e.d >= item.s ? " all" : isNext ? " cur" : ""));
   var nm = el("div", "nm", item.t);
   nm.onclick = function () { openHist[item.t] = !openHist[item.t]; render(); };
   c.appendChild(nm);
@@ -267,7 +289,8 @@ function card(prog, item) {
     var was = e.d;
     e.d = e.d >= item.s ? 0 : e.d + 1; // one tap per set; tap again when full to clear
     persist(prog, item, e);
-    if (e.d > was) startRest(item.t); else if (timer && timer.ex === item.t) stopRest();
+    if (e.d > was) startRest(prog, item.t);
+    else if (timer && timer.ex === item.t && timer.prog === prog && timer.date === cur) stopRest();
     render();
     if (e.d > was) alertPhone();
   };
@@ -276,9 +299,9 @@ function card(prog, item) {
 
   if (openHist[item.t]) {
     var h = el("div", "hist");
-    Object.keys(db.log).filter(function (d) { return db.log[d].prog === prog && db.log[d].ex && hasReps(db.log[d].ex[item.t]); })
+    Object.keys(db.log).filter(function (d) { return dp(d, prog) && hasReps(dp(d, prog).ex[item.t]); })
       .sort().reverse().slice(0, 30).forEach(function (d) {
-        var x = db.log[d].ex[item.t], r = el("div");
+        var x = dp(d, prog).ex[item.t], r = el("div");
         r.appendChild(el("span", null, dLabel(d))); r.appendChild(el("span", null, x.w + " × " + x.r)); h.appendChild(r);
       });
     c.appendChild(h);
@@ -299,23 +322,15 @@ function card(prog, item) {
   }
 }
 
-function switchProg(d) {
-  if (d === progOf(cur)) return;
-  var L = db.log[cur];
-  if (L && ((L.ex && Object.keys(L.ex).length) || L.cardio) && !confirm(PROGRAM[L.prog].label + " → " + PROGRAM[d].label + "?")) return;
-  if (d === weekdayOf(cur)) delete db.log[cur]; else db.log[cur] = { prog: d, ex: {} };
-  save(); render();
-}
-
 // next = same machine if sets remain, else first unfinished in order
 function findNext() {
-  var prog = progOf(cur), P = PROGRAM[prog];
+  var k = timer && timer.date ? timer.date : cur, prog = timer && timer.prog ? timer.prog : view, P = PROGRAM[prog];
   if (!P.ex) return null;
-  var left = P.ex.filter(function (it) { return entryFor(prog, it, cur).d < it.s; });
+  var left = P.ex.filter(function (it) { return entryFor(prog, it, k).d < it.s; });
   if (!left.length) return null;
   var same = timer && left.filter(function (it) { return it.t === timer.ex; })[0];
-  var it = same || left[0], e = entryFor(prog, it, cur);
-  return { t: it.t, set: e.d + 1, s: it.s };
+  var it = same || left[0], e = entryFor(prog, it, k);
+  return { t: it.t, set: e.d + 1, s: it.s, date: k, prog: prog };
 }
 function nextText() { return nextUp ? nextUp.t + (nextUp.s > 1 ? " · " + nextUp.set + "/" + nextUp.s : "") : "✓"; }
 
@@ -323,10 +338,10 @@ function nextText() { return nextUp ? nextUp.t + (nextUp.s > 1 ? " · " + nextUp
 var TKEY = "gym.timer", timer = null, audio = null, lock = null;
 try { timer = JSON.parse(localStorage.getItem(TKEY)); } catch (e) {}
 function saveTimer() { try { timer ? localStorage.setItem(TKEY, JSON.stringify(timer)) : localStorage.removeItem(TKEY); } catch (e) {} }
-function startRest(ex) {
+function startRest(prog, ex) {
   try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch (e) {}
   if (timer) cancelNags(timer);
-  timer = { ex: ex, start: Date.now(), popped: false, seq: "r" + Date.now().toString(36), sent: 0 };
+  timer = { ex: ex, prog: prog, date: cur, start: Date.now(), popped: false, seq: "r" + Date.now().toString(36), sent: 0 };
   saveTimer(); closePop(); wake(true);
 }
 function stopRest() { if (timer) cancelNags(timer); timer = null; saveTimer(); closePop(); wake(false); updateTimer(); }
@@ -446,21 +461,21 @@ function exportText() {
   ORDER.forEach(function (p) {
     var P = PROGRAM[p];
     if (P.rest) return;
-    var pd = days.filter(function (d) { return db.log[d].prog === p; });
+    var pd = days.filter(function (d) { return dp(d, p); });
     out.push(""); out.push("## " + P.label);
     if (P.cardio) {
-      out.push(""); out.push("- " + P.cardio + ": " + (pd.filter(function (d) { return db.log[d].cardio; }).join(", ") || "no sessions logged"));
+      out.push(""); out.push("- " + P.cardio + ": " + (pd.filter(function (d) { return dp(d, p).cardio; }).join(", ") || "no sessions logged"));
       return;
     }
     P.ex.forEach(function (it) {
-      var rows = pd.filter(function (d) { return hasReps(db.log[d].ex && db.log[d].ex[it.t]); });
+      var rows = pd.filter(function (d) { return hasReps(dp(d, p).ex[it.t]); });
       out.push(""); out.push("### " + it.t);
       if (!rows.length) { out.push(""); out.push("No sessions logged."); return; }
       out.push(""); out.push("| Date | Weight (kg) | Total kg | Reps | Sets done | Est. 1RM | vs previous |");
       out.push("|---|---|---|---|---|---|---|");
       var prev = null;
       rows.forEach(function (d) {
-        var x = db.log[d].ex[it.t], tw = wSum(x.w), r = +x.r, one = tw * (1 + r / 30), ch = "first";
+        var x = dp(d, p).ex[it.t], tw = wSum(x.w), r = +x.r, one = tw * (1 + r / 30), ch = "first";
         if (prev) {
           var dw = tw - prev.tw, dr = r - prev.r;
           ch = dw > 0 ? "weight +" + fmt(dw) : dw < 0 ? "weight " + fmt(dw) : dr > 0 ? "reps +" + dr : dr < 0 ? "reps " + dr : "same";
@@ -492,9 +507,9 @@ document.getElementById("impFile").onchange = function (ev) {
 };
 
 // ===== controls =====
-document.getElementById("prev").onclick = function () { cur = shift(cur, -1); render(); };
-document.getElementById("next").onclick = function () { cur = shift(cur, 1); render(); };
-document.getElementById("dlabel").onclick = function () { cur = TODAY; render(); };
+document.getElementById("prev").onclick = function () { goDate(shift(cur, -1)); };
+document.getElementById("next").onclick = function () { goDate(shift(cur, 1)); };
+document.getElementById("dlabel").onclick = function () { goDate(TODAY); };
 document.getElementById("tstop").onclick = stopRest;
 document.getElementById("prest").onclick = closePop;
 document.getElementById("pgo").onclick = function () {
