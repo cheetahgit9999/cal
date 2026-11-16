@@ -87,6 +87,7 @@ button:active{background:#30363d}
 .hist{margin-top:8px;font-size:12.5px;color:#8b949e;font-variant-numeric:tabular-nums}
 .hist div{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1b2028}
 .ph{text-align:center;font-size:26px;font-weight:800;letter-spacing:.04em;margin:6px 0 14px;line-height:1.2}
+.pn{text-align:center;color:#8b949e;font-size:13px;margin:-10px 0 14px}
 .ph.dim{color:#6e7681;margin-top:40px}
 .foot{margin-top:20px;display:flex;gap:8px;justify-content:center}
 .foot button{color:#8b949e}
@@ -180,7 +181,7 @@ var PROGRAM = {
     { t: "8. Cable Hammer Curl x1", s: 1, w: "13.6", r: "" },
     { t: "9. 🔺Cable Overhead Tricep Extension x1 (rest 2-3 min)", s: 1, w: "13.75", r: "" }
   ]},
-  WED: { label: "WEDNESDAY (LOWER)", ex: [
+  WED: { label: "WEDNESDAY (LOWER)", note: "พัก 3-5 นาที แล้วแต่จะพร้อมยัง", ex: [
     { t: "1. Leg Extension x2", s: 2, w: "90", r: "6" },
     { t: "2. Hack squat x2", s: 2, w: "10", r: "6" },
     { t: "3. Hamstring Curl x2", s: 2, w: "50", r: "7" },
@@ -268,6 +269,45 @@ function load() {
   return { log: {}, notes: {} };
 }
 var db = load();
+// notes written next to each exercise in the original program text (verbatim). Seeded once;
+// notes the user already has are never overwritten, and edits/clears afterwards stick.
+var SEED_NOTES = {
+  "TUE|1. Machine Pec Ty Deck x2": "50kg / reps",
+  "TUE|2. Incline Chest Press x2": "50kg /  reps",
+  "TUE|3. Lateral Raise x2": "50 kg / 7 reps",
+  "TUE|4. T-Bar Row x1": "40 kg / 5 reps",
+  "TUE|5. Lat Pulldown x1": "35 kg / ___ reps",
+  "TUE|6. Standing cable Curl x1 (rest 2-3min)": "13.75 kg / 7 reps",
+  "TUE|7. 🔺Cable Tricep Extension x1 (rest 2-3min)": "11.25 kg / 7 reps",
+  "TUE|8. Cable Hammer Curl x1": "13.6 kgเพิ่มนิดนึง / ___ reps",
+  "TUE|9. 🔺Cable Overhead Tricep Extension x1 (rest 2-3 min)": "13.75kg / reps",
+  "WED|1. Leg Extension x2": "90 kg+10ต้องเพิ่มอีก/ 6 reps",
+  "WED|2. Hack squat x2": "10kgข้างละ / 6 reps ลงให้สุดไม่สุดไม่นับ",
+  "WED|3. Hamstring Curl x2": "50 kg / 7 reps",
+  "WED|4. SLDL x2": "27.5 kgข้างละ / 8 reps พักเกิน 3 นาทีได้ gain binning by m",
+  "WED|5. Abs Crunch x2": "90 kg / 5 reps",
+  "FRI|1. Machine Pec Deck x2": "30+15 kg / 9 reps",
+  "FRI|2. Incline Chest Press x2": "50+15kg / 5 reps",
+  "FRI|3. Shoulder Press x1": "50 kg / 4 reps",
+  "FRI|4. Lateral Raise x2": "50 kg / 7 reps",
+  "FRI|5. Cable Tricep Extension x1 (2 min)": "13.75 kg / reps",
+  "FRI|6. Cable Overhead Tricep Extension x1": "11.25 kg / 7 reps",
+  "FRI|7. Standing Calf Raise x2": "70 kg / 10 reps",
+  "FRI|8. Adductor x1": "50+15 kg / 7 reps",
+  "SAT|1. T-Bar Row x2": "37.5 / 8 reps",
+  "SAT|2. Lat Pulldown x2": "35 / 9 reps",
+  "SAT|3. Close-Grip Lat Row x2": "25 kg / 5 reps",
+  "SAT|4. Rear delt cable fly x1": "8.75 kg / 8 reps",
+  "SAT|5. Standing cable Curl x2": "13.75kg / 7 reps",
+  "SAT|6. Cable Hammer Curl x1": "13.6 kgเพิ่มนิดนึง / ___ reps",
+  "SAT|7. Abs Crunch x2": "70+15 kg / 5 reps"
+};
+if (!db.notesSeeded) {
+  db.notes = db.notes || {};
+  Object.keys(SEED_NOTES).forEach(function (k) { if (!(k in db.notes)) db.notes[k] = SEED_NOTES[k]; });
+  db.notesSeeded = 1;
+  try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) {}
+}
 function save() { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) { alert(e.message); } }
 
 // ===== dates (Bangkok) =====
@@ -358,6 +398,7 @@ function render() {
   var list = document.getElementById("list"); list.innerHTML = "";
   nextUp = findNext();
   list.appendChild(el("div", "ph" + (P.rest ? " dim" : ""), P.label));
+  if (P.note) list.appendChild(el("div", "pn", P.note));
   var slot = document.getElementById("barSlot"); slot.innerHTML = "";
   if (P.rest) { list.appendChild(gameHeader()); updateTimer(); return; }
   if (P.cardio) {
