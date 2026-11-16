@@ -125,7 +125,7 @@ var PROGRAM = {
     { t: "5. Lat Pulldown x1", s: 1, w: "35", r: "" },
     { t: "6. Standing cable Curl x1 (rest 2-3min)", s: 1, w: "13.75", r: "7" },
     { t: "7. 🔺Cable Tricep Extension x1 (rest 2-3min)", s: 1, w: "11.25", r: "7" },
-    { t: "8. Cable Hammer Curl x1 (rest 2-3min)", s: 1, w: "13.6", r: "" },
+    { t: "8. Cable Hammer Curl x1", s: 1, w: "13.6", r: "" },
     { t: "9. 🔺Cable Overhead Tricep Extension x1 (rest 2-3 min)", s: 1, w: "13.75", r: "" }
   ]},
   WED: { label: "WEDNESDAY (LOWER)", ex: [
@@ -150,9 +150,9 @@ var PROGRAM = {
     { t: "1. T-Bar Row x2", s: 2, w: "37.5", r: "8" },
     { t: "2. Lat Pulldown x2", s: 2, w: "35", r: "9" },
     { t: "3. Close-Grip Lat Row x2", s: 2, w: "25", r: "5" },
-    { t: "4. Rear delt ยืน x1", s: 1, w: "8.75", r: "8" },
+    { t: "4. Rear delt cable fly x1", s: 1, w: "8.75", r: "8" },
     { t: "5. Standing cable Curl x2", s: 2, w: "13.75", r: "7" },
-    { t: "Cable Hammer Curl x1 (2 min)", s: 1, w: "13.6", r: "" },
+    { t: "Cable Hammer Curl x1", s: 1, w: "13.6", r: "" },
     { t: "7. Abs Crunch x2", s: 2, w: "70+15", r: "5" }
   ]},
   SUN: { label: "SUNDAY (CARDIO)", cardio: "1 hour" }
@@ -166,6 +166,11 @@ var REP_MIN = 5, REP_MAX = 10, REP_BUMP = 11, REST_GOAL = 180;
 // d = sets ticked; one weight/reps per exercise. Each program is kept separately per date,
 // so looking at (or training) another day's program never touches what's already logged.
 var KEY = "gym.v2";
+// renamed exercises: history logged under the old name moves to the new one
+var RENAMED = {
+  TUE: { "8. Cable Hammer Curl x1 (rest 2-3min)": "8. Cable Hammer Curl x1" },
+  SAT: { "4. Rear delt ยืน x1": "4. Rear delt cable fly x1", "Cable Hammer Curl x1 (2 min)": "Cable Hammer Curl x1" }
+};
 function migrate(d) {
   Object.keys(d.log || {}).forEach(function (k) {
     var L = d.log[k];
@@ -183,6 +188,13 @@ function migrate(d) {
         var f = v.filter(function (s) { return s && s.r !== "" && s.r != null; })[0] || v[0] || {};
         ex[n] = { w: f.w || "", r: f.r == null ? "" : String(f.r), d: v.filter(function (s) { return s && s.done; }).length };
       }
+    });
+  }); });
+  Object.keys(d.log || {}).forEach(function (k) { Object.keys(RENAMED).forEach(function (pg) {
+    var L = d.log[k].p[pg]; if (!L) return;
+    Object.keys(RENAMED[pg]).forEach(function (o) {
+      if (L.ex[o] && !L.ex[RENAMED[pg][o]]) L.ex[RENAMED[pg][o]] = L.ex[o];
+      delete L.ex[o];
     });
   }); });
   return d;
