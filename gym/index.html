@@ -76,6 +76,25 @@ button.badge.save{border:1px solid #3fb950;background:#238636;color:#fff;padding
 #cel .st div{background:#0b0e13aa;border-radius:12px;padding:10px 4px;font-size:12px;color:#8b949e}
 #cel .st b{display:block;font-size:22px;color:#e6edf3}
 #cel button{width:100%;padding:15px;font-size:19px;font-weight:800;border-radius:14px;background:#e3b341;border-color:#e3b341;color:#1a1300}
+#cel button.wkb{margin-top:8px;background:#1f6feb;border-color:#1f6feb;color:#fff;font-size:16px;padding:12px}
+#wk{position:fixed;inset:0;z-index:34;background:rgba(1,4,9,.92);display:none;overflow-y:auto;padding:16px 14px calc(16px + env(safe-area-inset-bottom))}
+#wk.on{display:block}
+#wk .bx{max-width:520px;margin:0 auto;background:#151a21;border:1px solid #30363d;border-radius:18px;padding:14px}
+#wk .hd{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+#wk .hd b{flex:1;text-align:center;font-size:17px}
+#wk .tl{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px}
+#wk .tl div{background:#0b0e13;border-radius:10px;padding:8px 2px;text-align:center;font-size:11px;color:#8b949e}
+#wk .tl b{display:block;font-size:19px;color:#e6edf3;font-variant-numeric:tabular-nums}
+#wk .days{display:flex;justify-content:center;gap:6px;margin-bottom:12px;font-size:12px;font-weight:700}
+#wk .days span{padding:3px 8px;border-radius:8px;background:#21262d;color:#6e7681}
+#wk .days span.ok{background:#2386363d;color:#3fb950}#wk .days span.part{background:#2f81f726;color:#58a6ff}
+#wk h4{margin:12px 0 6px;font-size:13px;color:#8b949e;font-weight:700}
+#wk ul{margin:0;padding-left:18px;font-size:13.5px}
+#wk li{margin:2px 0}
+#wk .up{color:#3fb950}#wk .dn{color:#f85149}#wk .hi{color:#f0883e}#wk .mu{color:#6e7681}
+#wk .act{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px}
+#wk .act button{padding:12px;font-weight:700}
+#wk .act .pri{grid-column:1/3;background:#1f6feb;border-color:#1f6feb;color:#fff;font-size:16px}
 #lvl{position:fixed;left:50%;top:30%;transform:translate(-50%,-50%);z-index:36;pointer-events:none;font-size:34px;font-weight:900;color:#e3b341;text-shadow:0 0 20px #e3b34188,0 3px 8px #000;display:none}
 #lvl.on{display:block;animation:lv 1.6s ease forwards}
 @keyframes lv{0%{opacity:0;transform:translate(-50%,-50%) scale(.5)}20%{opacity:1;transform:translate(-50%,-50%) scale(1.15)}80%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-60%) scale(1)}}
@@ -96,7 +115,9 @@ button.badge.save{border:1px solid #3fb950;background:#238636;color:#fff;padding
 #cfg{display:none;margin-top:10px;border:1px solid #21262d;border-radius:12px;padding:10px;font-size:13px;color:#8b949e}
 #cfg.on{display:block}
 #cfg .r{display:flex;gap:6px;align-items:center;margin:6px 0}
-#cfg input[type=text]{flex:1;min-width:0;background:#0b0e13;border:1px solid #30363d;border-radius:8px;padding:5px 7px}
+#cfg .gs{font-size:12px;color:#6e7681;margin:-2px 0 6px 26px;word-break:break-all}
+#cfg .gs a{color:#58a6ff}
+#cfg input[type=text],#cfg input[type=password]{flex:1;min-width:0;background:#0b0e13;border:1px solid #30363d;border-radius:8px;padding:5px 7px}
 #cfg input[type=checkbox]{width:20px;height:20px;accent-color:#238636}
 #dock{position:fixed;left:0;right:0;bottom:0;background:#161b22;border-top:1px solid #30363d;padding:8px 14px calc(8px + env(safe-area-inset-bottom));z-index:9}
 #dock.off{display:none}
@@ -132,6 +153,7 @@ button.muted{background:#3d1418;border-color:#7d2a30}
   <div class="tabs" id="tabs"></div>
   <div id="list"></div>
   <div class="foot">
+    <button id="wkBtn">📊</button>
     <button id="exp">Export</button>
     <button id="imp">Import</button>
     <button id="fmute">🔔</button>
@@ -141,6 +163,8 @@ button.muted{background:#3d1418;border-color:#7d2a30}
   <div id="cfg">
     <div class="r"><input type="checkbox" id="pushOn"> ntfy <input type="text" id="pushTopic" readonly><button id="pushCopy">copy</button><button id="pushTest">test</button></div>
     <div class="r"><input type="checkbox" id="iosOn"> Shortcuts <input type="text" id="iosName"><button id="iosTest">test</button></div>
+    <div class="r"><span style="width:20px;text-align:center">☁️</span> GitHub <input type="password" id="ghTok" placeholder="token" autocomplete="off"><button id="ghSync">sync</button></div>
+    <div class="gs" id="ghStat"></div>
   </div>
 </div>
 
@@ -154,6 +178,18 @@ button.muted{background:#3d1418;border-color:#7d2a30}
   <div id="barSlot"></div>
 </div></div>
 
+<div id="wk"><div class="bx">
+  <div class="hd"><button id="wkPrev">‹</button><b id="wkTitle"></b><button id="wkNext">›</button><button id="wkClose">✕</button></div>
+  <div class="days" id="wkDays"></div>
+  <div class="tl" id="wkTiles"></div>
+  <div id="wkBody"></div>
+  <div class="act">
+    <button class="pri" id="wkShare">↗︎ ส่งให้ AI วิเคราะห์</button>
+    <button id="wkCopy">📋 Copy</button>
+    <button id="wkDl">⬇︎ .md</button>
+  </div>
+</div></div>
+
 <canvas id="fx"></canvas>
 <div id="lvl"></div>
 <div id="cel"><div class="bx">
@@ -161,6 +197,7 @@ button.muted{background:#3d1418;border-color:#7d2a30}
   <h2>WORKOUT DONE</h2>
   <div class="st" id="celst"></div>
   <button id="celok">💪</button>
+  <button id="celwk" class="wkb" style="display:none">📊 สรุปสัปดาห์</button>
 </div></div>
 
 <div id="pop"><div class="bx">
@@ -313,7 +350,7 @@ if (!db.notesSeeded) {
   db.notesSeeded = 1;
   try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) {}
 }
-function save() { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) { alert(e.message); } }
+function save() { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) { alert(e.message); } if (window.queueSync) queueSync(); }
 
 // ===== dates (Bangkok) =====
 var TZ = "Asia/Bangkok";
@@ -646,6 +683,7 @@ function afterTick(prog, item, before, ev) {
 }
 function celebrate(prog, gained, g) {
   var st = dayStats(cur, prog), box = document.getElementById("celst"); box.innerHTML = "";
+  document.getElementById("celwk").style.display = prog === "SUN" || weekdayOf(cur) === "SUN" ? "" : "none";
   var dayXp = st.sets * XP_SET + st.pr * XP_PR + (st.done ? XP_DAY : 0);
   [[st.sets || "✓", "sets"], ["▲ " + st.pr, "PR"], ["+" + dayXp, "XP"], ["🔥 " + g.streak, "streak"]].forEach(function (x) {
     var d = el("div"); d.appendChild(el("b", null, String(x[0]))); d.appendChild(document.createTextNode(x[1])); box.appendChild(d);
@@ -678,6 +716,132 @@ function fxLoop() {
     g.fillStyle = p.c; g.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); g.restore();
   });
   if (parts.length) requestAnimationFrame(fxLoop); else { fxOn = false; g.clearRect(0, 0, W, H); }
+}
+
+// ===== weekly review (split = TUE…SUN; a week runs MON→SUN) =====
+var TRAIN = ["TUE", "WED", "FRI", "SAT"], wkStart = null;
+function weekOf(k) { return shift(k, -ORDER.indexOf(weekdayOf(k))); }
+function wkLabel(ws) {
+  var f = function (k, o) { return new Intl.DateTimeFormat("en-GB", o).format(kDate(k)); };
+  return f(ws, { timeZone: TZ, day: "numeric", month: "short" }) + " – " + f(shift(ws, 6), { timeZone: TZ, day: "numeric", month: "short", year: "numeric" });
+}
+// latest entry of an exercise inside [from, to] for one program
+function entryIn(prog, name, from, to) {
+  var hit = null;
+  for (var d = from; d <= to; d = shift(d, 1)) { var L = dp(d, prog); if (L && L.ex[name] && (hasReps(L.ex[name]) || L.ex[name].d)) hit = { day: d, e: L.ex[name] }; }
+  return hit;
+}
+// last logged session of the same exercise on any day, strictly before a date
+function lastAny(name, before) {
+  var b = baseName(name), days = Object.keys(db.log).filter(function (d) { return d < before; }).sort().reverse();
+  for (var i = 0; i < days.length; i++) {
+    var P = db.log[days[i]].p;
+    for (var pg in P) for (var n in P[pg].ex) if (baseName(n) === b && hasReps(P[pg].ex[n])) return { day: days[i], e: P[pg].ex[n], prog: pg };
+  }
+  return null;
+}
+function weekData(ws) {
+  var we = shift(ws, 6), out = { ws: ws, we: we, days: [], rows: [], prs: [], bump: [], stuck: [], up: 0, flat: 0, down: 0, sets: 0, planned: 0, cardio: false };
+  ORDER.forEach(function (pg) {
+    var P = PROGRAM[pg];
+    if (P.rest) return;
+    if (P.cardio) { for (var d = ws; d <= we; d = shift(d, 1)) if (dp(d, pg) && dp(d, pg).cardio) out.cardio = d; return; }
+    var got = 0, tot = 0, when = null;
+    P.ex.forEach(function (it) {
+      tot += it.s;
+      var cur_ = entryIn(pg, it.t, ws, we), prev = lastAny(it.t, cur_ ? cur_.day : ws);
+      var row = { prog: pg, item: it, cur: cur_, prev: prev, note: noteOf(pg, it.t) };
+      if (cur_) {
+        got += Math.min(it.s, cur_.e.d || 0); when = when && when > cur_.day ? when : cur_.day;
+        if (hasReps(cur_.e) && prev) {
+          var dw = wSum(cur_.e.w) - wSum(prev.e.w), dr = +cur_.e.r - +prev.e.r;
+          row.dir = dw > 0 ? 1 : dw < 0 ? -1 : dr > 0 ? 1 : dr < 0 ? -1 : 0; row.dw = Math.round(dw * 100) / 100; row.dr = dr;
+          if (row.dir > 0) out.up++; else if (row.dir < 0) out.down++; else out.flat++;
+        }
+        if (hasReps(cur_.e) && +cur_.e.r >= REP_BUMP) out.bump.push(it.t + " (" + cur_.e.w + "×" + cur_.e.r + ")");
+      }
+      out.rows.push(row);
+    });
+    out.sets += got; out.planned += tot;
+    out.days.push({ prog: pg, got: got, tot: tot, when: when });
+  });
+  Object.keys(db.prs || {}).forEach(function (b) { (db.prs[b] || []).forEach(function (x) { if (x.at >= ws && x.at <= we) out.prs.push({ base: b, w: x.w, r: x.r, at: x.at }); }); });
+  // stuck: same weight in the last 3 logged sessions up to this week
+  var seen = {};
+  out.rows.forEach(function (row) {
+    var b = baseName(row.item.t); if (seen[b]) return; seen[b] = 1;
+    var hist = [];
+    Object.keys(db.log).sort().forEach(function (d) { if (d > we) return; Object.keys(db.log[d].p).forEach(function (pg) { var x = dp(d, pg).ex; Object.keys(x).forEach(function (n) { if (baseName(n) === b && hasReps(x[n])) hist.push(wSum(x[n].w)); }); }); });
+    var l3 = hist.slice(-3);
+    if (l3.length === 3 && l3[0] === l3[1] && l3[1] === l3[2]) out.stuck.push(row.item.t.replace(/^\d+\.\s*/, "") + " (" + l3[2] + " kg × 3 ครั้ง)");
+  });
+  return out;
+}
+function weekText(W) {
+  var o = [], g = game();
+  o.push("# Gym week " + wkLabel(W.ws) + " — ช่วยวิเคราะห์หน่อย");
+  o.push("");
+  o.push("ช่วยวิเคราะห์การเทรนสัปดาห์นี้ของผม: อะไรดีขึ้น อะไรค้าง ท่าไหนควรเพิ่มน้ำหนักสัปดาห์หน้า (บอกน้ำหนักที่แนะนำ) volume/recovery โอเคไหม และสรุปข้อแนะนำสั้นๆ 3–5 ข้อ จำข้อมูลนี้ไว้เพื่อให้รู้จักผมมากขึ้นทุกสัปดาห์");
+  o.push("");
+  o.push("## กฎการเทรนของผม");
+  o.push("- Split: MON rest · TUE upper · WED lower · THU rest · FRI push · SAT pull · SUN cardio 1 ชม.");
+  o.push("- Rep range 5–10 · ได้ 11+ reps = เพิ่มน้ำหนักครั้งหน้า · เน้นน้ำหนักเป็นหลัก (น้ำหนักขึ้นแล้ว reps ลด = ปกติ ถือว่า progressive overload)");
+  o.push("- พักขั้นต่ำ 3 นาทีต่อเซ็ต · บันทึกน้ำหนัก/reps หนึ่งค่าต่อท่า (ทุกเซ็ตใช้น้ำหนักเดียวกัน) · \"50+15\" = 65 kg รวม · \"ข้างละ\" = ต่อข้าง");
+  o.push("- ท่าชื่อเดียวกันคนละวันคือท่าเดียวกัน ใช้ PR ร่วมกัน");
+  o.push("");
+  o.push("## สรุปสัปดาห์");
+  o.push("- เข้ายิม: " + W.days.filter(function (d) { return d.got > 0; }).length + "/" + W.days.length + " วัน (" + W.days.map(function (d) { return d.prog + " " + (d.got >= d.tot ? "✓" : d.got ? d.got + "/" + d.tot : "✗"); }).join(", ") + ") · Cardio: " + (W.cardio ? "✓" : "✗"));
+  o.push("- เซ็ตที่ทำ: " + W.sets + "/" + W.planned);
+  o.push("- เทียบครั้งก่อน: ▲ ขึ้น " + W.up + " ท่า · = เท่าเดิม " + W.flat + " · ▼ ลง " + W.down);
+  o.push("- PR ที่เซฟสัปดาห์นี้: " + (W.prs.length ? W.prs.map(function (x) { return x.base + " " + x.w + "×" + x.r + " (" + x.at + ")"; }).join(", ") : "ไม่มี"));
+  o.push("- ได้ 11+ reps (ควรเพิ่มน้ำหนัก): " + (W.bump.join(", ") || "ไม่มี"));
+  o.push("- น้ำหนักเท่าเดิม 3 ครั้งติด: " + (W.stuck.join(", ") || "ไม่มี"));
+  o.push("- Level " + g.lv + " · " + g.xp + " XP · streak " + g.streak + " วัน");
+  W.days.forEach(function (d) {
+    o.push(""); o.push("## " + PROGRAM[d.prog].label + (d.when ? " — " + d.when : " — ไม่ได้เล่น"));
+    o.push(""); o.push("| ท่า | สัปดาห์นี้ (kg×reps) | ครั้งก่อน | เปลี่ยน | เซ็ต | โน้ต |"); o.push("|---|---|---|---|---|---|");
+    W.rows.filter(function (r) { return r.prog === d.prog; }).forEach(function (r) {
+      var ch = r.dir == null ? "–" : (r.dw ? (r.dw > 0 ? "+" : "") + fmt(r.dw) + " kg" : "") + (r.dr ? (r.dw ? ", " : "") + (r.dr > 0 ? "+" : "") + r.dr + " reps" : "") || "=";
+      o.push("| " + r.item.t + " | " + (r.cur && hasReps(r.cur.e) ? r.cur.e.w + "×" + r.cur.e.r : r.cur ? r.cur.e.w + "×?" : "ไม่ได้เล่น") + " | " + (r.prev ? r.prev.e.w + "×" + r.prev.e.r + " (" + r.prev.prog + " " + r.prev.day + ")" : "–") + " | " + ch + " | " + (r.cur ? (r.cur.e.d || 0) : 0) + "/" + r.item.s + " | " + (r.note || "").replace(/\n+/g, " / ").replace(/\|/g, "/") + " |");
+    });
+  });
+  // longer memory: last 4 weeks per exercise
+  o.push(""); o.push("## ประวัติ 4 สัปดาห์ (น้ำหนัก×reps ต่อสัปดาห์)");
+  var weeks = [shift(W.ws, -21), shift(W.ws, -14), shift(W.ws, -7), W.ws];
+  o.push(""); o.push("| วัน | ท่า | " + weeks.map(function (w) { return w.slice(5); }).join(" | ") + " |"); o.push("|---|---|" + weeks.map(function () { return "---"; }).join("|") + "|");
+  var any = 0;
+  W.rows.forEach(function (r) {
+    var cells = weeks.map(function (w) { var x = entryIn(r.prog, r.item.t, w, shift(w, 6)); return x && hasReps(x.e) ? x.e.w + "×" + x.e.r : "–"; });
+    if (cells.every(function (c) { return c === "–"; })) return; // nothing logged in 4 weeks: skip the noise
+    any++; o.push("| " + r.prog + " | " + r.item.t + " | " + cells.join(" | ") + " |");
+  });
+  if (!any) o.push("| – | ยังไม่มีข้อมูล | " + weeks.map(function () { return "–"; }).join(" | ") + " |");
+  return o.join("\n");
+}
+function openWeek(ws) {
+  wkStart = ws || weekOf(cur);
+  var W = weekData(wkStart);
+  document.getElementById("wkTitle").textContent = "📊 " + wkLabel(wkStart);
+  var dd = document.getElementById("wkDays"); dd.innerHTML = "";
+  W.days.forEach(function (d) { dd.appendChild(el("span", d.got >= d.tot ? "ok" : d.got ? "part" : "", d.prog + (d.got >= d.tot ? " ✓" : d.got ? " " + d.got + "/" + d.tot : ""))); });
+  dd.appendChild(el("span", W.cardio ? "ok" : "", "SUN" + (W.cardio ? " ✓" : "")));
+  var tl = document.getElementById("wkTiles"); tl.innerHTML = "";
+  [[W.days.filter(function (d) { return d.got > 0; }).length + "/" + W.days.length, "วันเข้ายิม"], [W.sets + "/" + W.planned, "เซ็ต"], ["▲ " + W.up, "น้ำหนักขึ้น"], ["🏆 " + W.prs.length, "PR"]].forEach(function (x) {
+    var d = el("div"); d.appendChild(el("b", null, x[0])); d.appendChild(document.createTextNode(x[1])); tl.appendChild(d);
+  });
+  var body = document.getElementById("wkBody"); body.innerHTML = "";
+  function list(title, items, cls) {
+    if (!items.length) return;
+    body.appendChild(el("h4", null, title)); var ul = el("ul");
+    items.forEach(function (t) { ul.appendChild(el("li", cls, t)); }); body.appendChild(ul);
+  }
+  list("🏆 PR ที่เซฟ", W.prs.map(function (x) { return x.base + " — " + x.w + " × " + x.r; }), "up");
+  list("▲ ขึ้นจากครั้งก่อน", W.rows.filter(function (r) { return r.dir > 0; }).map(function (r) { return r.item.t + " — " + r.prev.e.w + "×" + r.prev.e.r + " → " + r.cur.e.w + "×" + r.cur.e.r; }), "up");
+  list("⬆︎ ได้ 11+ reps ควรเพิ่ม kg", W.bump, "hi");
+  list("⏸ เท่าเดิม 3 ครั้งติด", W.stuck, "mu");
+  list("▼ ลดลง", W.rows.filter(function (r) { return r.dir < 0; }).map(function (r) { return r.item.t + " — " + r.prev.e.w + "×" + r.prev.e.r + " → " + r.cur.e.w + "×" + r.cur.e.r; }), "dn");
+  if (!body.children.length) body.appendChild(el("div", "mu", "ยังไม่มีข้อมูลสัปดาห์นี้"));
+  document.getElementById("wk").className = "on";
 }
 
 // next = same machine if sets remain, else first unfinished in order
@@ -900,6 +1064,25 @@ document.getElementById("next").onclick = function () { goDate(shift(cur, 1)); }
 document.getElementById("dlabel").onclick = function () { goDate(TODAY); };
 document.getElementById("tstop").onclick = stopRest;
 document.getElementById("celok").onclick = function () { document.getElementById("cel").className = ""; };
+document.getElementById("celwk").onclick = function () { document.getElementById("cel").className = ""; openWeek(weekOf(cur)); };
+document.getElementById("wkBtn").onclick = function () { openWeek(weekOf(cur)); };
+document.getElementById("wkClose").onclick = function () { document.getElementById("wk").className = ""; };
+document.getElementById("wkPrev").onclick = function () { openWeek(shift(wkStart, -7)); };
+document.getElementById("wkNext").onclick = function () { openWeek(shift(wkStart, 7)); };
+document.getElementById("wkCopy").onclick = function () {
+  var b = this, t = weekText(weekData(wkStart));
+  (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function () { b.textContent = "✓ Copied"; }).catch(function () { prompt("Copy:", t); });
+};
+document.getElementById("wkShare").onclick = function () {
+  var t = weekText(weekData(wkStart));
+  if (navigator.share) navigator.share({ title: "Gym week " + wkLabel(wkStart), text: t }).catch(function () {});
+  else document.getElementById("wkCopy").click();
+};
+document.getElementById("wkDl").onclick = function () {
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([weekText(weekData(wkStart))], { type: "text/markdown;charset=utf-8" }));
+  a.download = "gym-week-" + wkStart + ".md"; document.body.appendChild(a); a.click(); a.remove();
+};
 document.getElementById("prest").onclick = closePop;
 document.getElementById("pgo").onclick = function () {
   closePop();
@@ -914,6 +1097,80 @@ document.getElementById("tmute").onclick = function () { setPush(!push.on); };
 document.getElementById("fmute").onclick = function () { setPush(!push.on); };
 paintMute();
 flushKill(); // finish any cancels left over from last time
+
+// ===== auto-publish: keep gym/data.md in the GitHub repo up to date, so any AI can read it at a fixed URL =====
+// One-time setup: a fine-grained token with "Contents: Read and write" on this repo only, pasted under ⚙.
+var GH = { repo: "cheetahgit9999/cal", branch: "main", path: "gym/data.md" };
+var DATA_URL = "https://cheetahgit9999.github.io/cal/gym/data.md";
+var GKEY = "gym.gh", gh = { token: "", hash: "", last: "", err: "" };
+try { var _g = JSON.parse(localStorage.getItem(GKEY)); if (_g) gh = _g; } catch (e) {}
+function saveGh() { try { localStorage.setItem(GKEY, JSON.stringify(gh)); } catch (e) {} }
+function hashStr(t) { var h = 0; for (var i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) | 0; return String(h); }
+function dataDoc() {
+  var ws = weekOf(TODAY);
+  return [
+    "# Gym training data — auto-updated",
+    "",
+    "This page is my live gym log, published automatically from my tracker every time I log a set.",
+    "If you are an AI reading this: use it to understand how I train and how I'm progressing.",
+    "",
+    "Sections: 1) this week's summary, 2) last week's summary, 3) full history per exercise, 4) raw JSON.",
+    "",
+    "---",
+    "",
+    "## 1) This week",
+    "",
+    weekText(weekData(ws)).replace(/^# /, "### "),
+    "",
+    "---",
+    "",
+    "## 2) Last week",
+    "",
+    weekText(weekData(shift(ws, -7))).replace(/^# /, "### "),
+    "",
+    "---",
+    "",
+    "## 3–4) Full history and raw data",
+    "",
+    exportText().replace(/^# .*\n/, "")
+  ].join("\n");
+}
+var syncT = null, syncing = false;
+function queueSync() { if (!gh.token) return; clearTimeout(syncT); syncT = setTimeout(syncNow, 45000); }
+function paintGh() {
+  var st = document.getElementById("ghStat"); if (!st) return;
+  st.innerHTML = "";
+  if (!gh.token) { st.textContent = "ใส่ token เพื่ออัปโหลดข้อมูลขึ้นเว็บอัตโนมัติ"; return; }
+  st.appendChild(document.createTextNode((gh.err ? "⚠️ " + gh.err : gh.last ? "✓ อัปเดตล่าสุด " + new Date(gh.last).toLocaleString("en-GB", { timeZone: TZ }) : "รอ sync…") + " · "));
+  var a = el("a", null, DATA_URL); a.href = DATA_URL; a.target = "_blank"; st.appendChild(a);
+}
+function syncNow(force) {
+  clearTimeout(syncT);
+  if (!gh.token || syncing) return Promise.resolve();
+  var doc = dataDoc(), h = hashStr(doc);
+  if (force !== true && h === gh.hash) return Promise.resolve();
+  syncing = true;
+  var api = "https://api.github.com/repos/" + GH.repo + "/contents/" + GH.path;
+  var hd = { "Authorization": "Bearer " + gh.token, "Accept": "application/vnd.github+json" };
+  return fetch(api + "?ref=" + GH.branch, { headers: hd, cache: "no-store" })
+    .then(function (r) { if (r.status === 404) return null; if (!r.ok) throw new Error("GitHub " + r.status); return r.json(); })
+    .then(function (cur_) {
+      var body = { message: "gym: data sync " + TODAY, branch: GH.branch, content: btoa(unescape(encodeURIComponent(doc))) };
+      if (cur_ && cur_.sha) body.sha = cur_.sha;
+      return fetch(api, { method: "PUT", headers: hd, body: JSON.stringify(body) });
+    })
+    .then(function (r) { if (!r.ok) throw new Error("GitHub " + r.status + (r.status === 401 ? " (token ผิด/หมดอายุ)" : r.status === 403 || r.status === 404 ? " (token ไม่มีสิทธิ์เขียน repo นี้)" : "")); gh.hash = h; gh.last = Date.now(); gh.err = ""; })
+    .catch(function (e) { gh.err = e.message; })
+    .then(function () { syncing = false; saveGh(); paintGh(); });
+}
+window.queueSync = queueSync;
+var ghTok = document.getElementById("ghTok");
+ghTok.value = gh.token ? "••••••••" : "";
+ghTok.onchange = function () { var v = ghTok.value.trim(); if (v && v.indexOf("•") < 0) { gh.token = v; gh.hash = ""; gh.err = ""; } else if (!v) { gh.token = ""; } saveGh(); ghTok.value = gh.token ? "••••••••" : ""; paintGh(); if (gh.token) syncNow(true); };
+document.getElementById("ghSync").onclick = function () { syncNow(true); };
+document.addEventListener("visibilitychange", function () { if (document.visibilityState === "hidden") syncNow(); });
+paintGh();
+if (gh.token) setTimeout(syncNow, 3000);
 document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") flushKill(); });
 iosOn.onchange = function () { ios.on = iosOn.checked; saveCfg(); };
 iosName.oninput = function () { ios.name = iosName.value.trim(); saveCfg(); };
