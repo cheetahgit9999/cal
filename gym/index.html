@@ -9,7 +9,7 @@
 <style>
 :root{color-scheme:dark}
 *{box-sizing:border-box}
-body{margin:0;background:#0e1116;color:#e6edf3;font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans Thai",sans-serif;padding:14px 14px 120px}
+body{margin:0;background:#0e1116;color:#e6edf3;font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans Thai",sans-serif;padding:14px 14px 150px}
 .wrap{max-width:640px;margin:0 auto}
 input,button{font:inherit;color:inherit}
 button{background:#21262d;border:1px solid #30363d;border-radius:10px;padding:6px 11px;cursor:pointer;touch-action:manipulation}
@@ -40,12 +40,12 @@ button:active{background:#30363d}
 .badge{flex-shrink:0;font-size:12px;font-weight:800;padding:2px 9px;border-radius:20px}
 .badge.up{background:#2386363d;color:#3fb950}.badge.dn{background:#f851492e;color:#f85149}
 .card.pr{box-shadow:inset 4px 0 0 #3fb950}.card.rg{box-shadow:inset 4px 0 0 #f85149}
-.game{display:flex;justify-content:center;gap:6px;margin:-6px 0 8px;font-size:13px;font-weight:800;font-variant-numeric:tabular-nums}
+.game{display:flex;justify-content:center;gap:6px;margin:14px 0 0;font-size:13px;font-weight:800;font-variant-numeric:tabular-nums}
 .game span{padding:3px 10px;border-radius:20px;background:#21262d;color:#adbac7}
 .game .lv{background:#3b2a07;color:#e3b341}.game .fire{background:#3d1a0a;color:#ff8b3d}
 .lvb{height:3px;background:#30363d;border-radius:2px;margin:6px auto 0;max-width:160px;overflow:hidden}
 .lvb i{display:block;height:100%;background:#e3b341;transition:width .6s}
-.dbar{position:relative;height:22px;background:#161b22;border:1px solid #30363d;border-radius:12px;overflow:hidden;margin:0 0 12px}
+.dbar{position:relative;height:22px;background:#0b0e13;border:1px solid #30363d;border-radius:12px;overflow:hidden}
 .dbar i{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,#238636,#3fb950);transition:width .7s cubic-bezier(.2,1.4,.4,1)}
 .dbar b{position:relative;display:block;text-align:center;font-size:12.5px;line-height:20px;font-variant-numeric:tabular-nums}
 .dbar.full i{background:linear-gradient(90deg,#e3b341,#3fb950,#e3b341);background-size:200% 100%;animation:sh 2s linear infinite}
@@ -88,7 +88,10 @@ button:active{background:#30363d}
 #cfg .r{display:flex;gap:6px;align-items:center;margin:6px 0}
 #cfg input[type=text]{flex:1;min-width:0;background:#0b0e13;border:1px solid #30363d;border-radius:8px;padding:5px 7px}
 #cfg input[type=checkbox]{width:20px;height:20px;accent-color:#238636}
-#timer{position:fixed;left:0;right:0;bottom:0;background:#161b22;border-top:1px solid #30363d;padding:10px 14px calc(10px + env(safe-area-inset-bottom));display:none;z-index:9}
+#dock{position:fixed;left:0;right:0;bottom:0;background:#161b22;border-top:1px solid #30363d;padding:8px 14px calc(8px + env(safe-area-inset-bottom));z-index:9}
+#dock.off{display:none}
+#dock .w{max-width:640px;margin:0 auto}
+#timer{display:none;padding:0 0 8px}
 #timer.on{display:block}
 #timer .in{max-width:640px;margin:0 auto;display:flex;align-items:center;gap:12px}
 #timer .clk{font-size:34px;font-weight:750;font-variant-numeric:tabular-nums;color:#d29922;min-width:92px}
@@ -129,10 +132,13 @@ button:active{background:#30363d}
   </div>
 </div>
 
-<div id="timer"><div class="in">
-  <div class="clk" id="clk">0:00</div>
-  <div class="tx"><div id="tnext"></div><div class="pb"><i id="tpb"></i></div></div>
-  <button id="tstop">✕</button>
+<div id="dock" class="off"><div class="w">
+  <div id="timer"><div class="in">
+    <div class="clk" id="clk">0:00</div>
+    <div class="tx"><div id="tnext"></div><div class="pb"><i id="tpb"></i></div></div>
+    <button id="tstop">✕</button>
+  </div></div>
+  <div id="barSlot"></div>
 </div></div>
 
 <canvas id="fx"></canvas>
@@ -341,8 +347,8 @@ function render() {
   var list = document.getElementById("list"); list.innerHTML = "";
   nextUp = findNext();
   list.appendChild(el("div", "ph" + (P.rest ? " dim" : ""), P.label));
-  list.appendChild(gameHeader());
-  if (P.rest) { updateTimer(); return; }
+  var slot = document.getElementById("barSlot"); slot.innerHTML = "";
+  if (P.rest) { list.appendChild(gameHeader()); updateTimer(); return; }
   if (P.cardio) {
     var c = el("div", "card"), done = !!(dp(cur, prog) && dp(cur, prog).cardio);
     c.style.display = "flex"; c.style.justifyContent = "space-between"; c.style.alignItems = "center";
@@ -354,7 +360,7 @@ function render() {
       if (!done) afterTick(prog, null, before, { set: true, exDone: true, dayDone: true });
     };
     c.appendChild(b); if (done) c.classList.add("all");
-    list.appendChild(c); updateTimer(); return;
+    list.appendChild(c); list.appendChild(gameHeader()); updateTimer(); return;
   }
   var up = 0, dn = 0;
   P.ex.forEach(function (item) {
@@ -373,10 +379,11 @@ function render() {
   var bar = el("div", "dbar" + (got === tot ? " full" : "")), fill = el("i");
   fill.style.width = (lastBar[cur + prog] != null ? lastBar[cur + prog] : got / tot * 100) + "%";
   bar.appendChild(fill); bar.appendChild(el("b", null, got === tot ? "🏆 " + got + "/" + tot : got + "/" + tot));
-  list.insertBefore(bar, list.children[2]);
+  slot.appendChild(bar);
   requestAnimationFrame(function () { requestAnimationFrame(function () { fill.style.width = got / tot * 100 + "%"; }); });
   lastBar[cur + prog] = got / tot * 100;
   P.ex.forEach(function (item, i) { var c = card(prog, item); c.dataset.i = i; list.appendChild(c); });
+  list.appendChild(gameHeader());
   flashKey = null;
   updateTimer();
 }
@@ -494,7 +501,6 @@ function gameHeader() {
   row.appendChild(el("span", "fire", "🔥 " + g.streak));
   box.appendChild(row);
   var lb = el("div", "lvb"), li = el("i"); li.style.width = g.into / LV_XP * 100 + "%"; lb.appendChild(li); box.appendChild(lb);
-  box.style.marginBottom = "12px";
   return box;
 }
 function floatText(x, y, text, gold) {
@@ -597,6 +603,7 @@ function openPop() { document.getElementById("pnext").textContent = nextText(); 
 function closePop() { document.getElementById("pop").className = ""; }
 function updateTimer() {
   var box = document.getElementById("timer");
+  document.getElementById("dock").className = timer || document.getElementById("barSlot").firstChild ? "" : "off";
   if (!timer) { box.className = ""; return; }
   var sec = Math.max(0, Math.floor((Date.now() - timer.start) / 1000)), ready = sec >= REST_GOAL;
   if (ready && !timer.popped && document.visibilityState !== "hidden") {
