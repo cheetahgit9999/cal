@@ -335,11 +335,10 @@ function findNext() {
 function nextText() { return nextUp ? nextUp.t + (nextUp.s > 1 ? " · " + nextUp.set + "/" + nextUp.s : "") : "✓"; }
 
 // ===== rest timer: counts up from 0:00, never stops by itself =====
-var TKEY = "gym.timer", timer = null, audio = null, lock = null;
+var TKEY = "gym.timer", timer = null, lock = null;
 try { timer = JSON.parse(localStorage.getItem(TKEY)); } catch (e) {}
 function saveTimer() { try { timer ? localStorage.setItem(TKEY, JSON.stringify(timer)) : localStorage.removeItem(TKEY); } catch (e) {} }
 function startRest(prog, ex) {
-  try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch (e) {}
   if (timer) cancelNags(timer);
   timer = { ex: ex, prog: prog, date: cur, start: Date.now(), popped: false, seq: "r" + Date.now().toString(36), sent: 0 };
   saveTimer(); closePop(); wake(true);
@@ -352,18 +351,8 @@ function wake(on) {
   } catch (e) {}
 }
 function clock(sec) { var m = Math.floor(sec / 60), x = sec % 60; return m + ":" + (x < 10 ? "0" : "") + x; }
-function beep() {
-  try { if (navigator.vibrate) navigator.vibrate([400, 150, 400, 150, 800]); } catch (e) {}
-  if (!audio) return;
-  try {
-    [0, 0.3, 0.6, 1.2, 1.5, 1.8].forEach(function (t) {
-      var o = audio.createOscillator(), g = audio.createGain();
-      o.type = "square"; o.frequency.value = 880; o.connect(g); g.connect(audio.destination);
-      g.gain.setValueAtTime(0.25, audio.currentTime + t); g.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + t + 0.2);
-      o.start(audio.currentTime + t); o.stop(audio.currentTime + t + 0.2);
-    });
-  } catch (e) {}
-}
+// silent on purpose (gym): vibrate only, where the browser supports it
+function buzz() { try { if (navigator.vibrate) navigator.vibrate([400, 150, 400]); } catch (e) {} }
 function openPop() { document.getElementById("pnext").textContent = nextText(); document.getElementById("pop").className = "on"; }
 function closePop() { document.getElementById("pop").className = ""; }
 function updateTimer() {
@@ -372,7 +361,7 @@ function updateTimer() {
   var sec = Math.max(0, Math.floor((Date.now() - timer.start) / 1000)), ready = sec >= REST_GOAL;
   if (ready && !timer.popped && document.visibilityState !== "hidden") {
     timer.popped = true; saveTimer();
-    if (sec < REST_GOAL + 5) beep();
+    if (sec < REST_GOAL + 5) buzz();
     openPop();
   }
   box.className = "on" + (ready ? " ready" : "");
