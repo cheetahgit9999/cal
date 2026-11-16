@@ -160,7 +160,6 @@ button.muted{background:#3d1418;border-color:#7d2a30}
   </div>
   <div id="cfg">
     <div class="r"><button id="exp">Export</button><button id="imp">Import</button><span style="flex:1"></span><button id="fmute">🔔</button></div>
-    <div class="r"><button id="resetAll" style="color:#f85149">↺ รีเซ็ตน้ำหนัก/reps กลับค่าเดิม</button></div>
     <div class="r"><input type="checkbox" id="pushOn"> ntfy <input type="text" id="pushTopic" readonly><button id="pushCopy">copy</button><button id="pushTest">test</button></div>
     <div class="r"><input type="checkbox" id="iosOn"> Shortcuts <input type="text" id="iosName"><button id="iosTest">test</button></div>
     <div class="r"><span style="width:20px;text-align:center">☁️</span> GitHub <input type="password" id="ghTok" placeholder="token" autocomplete="off"><button id="ghSync">sync</button></div>
@@ -204,7 +203,7 @@ var PROGRAM = {
   MON: { label: "MONDAY (REST)", rest: true },
   TUE: { label: "TUESDAY (UPPER)", ex: [
     { t: "1. Machine Pec Ty Deck x2", s: 2, w: "50", r: "" },
-    { t: "2. Incline Chest Press x2", s: 2, w: "50+15", r: "" },
+    { t: "2. Incline Chest Press x2", s: 2, w: "50", r: "" },
     { t: "3. Lateral Raise x2", s: 2, w: "50", r: "7" },
     { t: "4. T-Bar Row x1", s: 1, w: "40", r: "5" },
     { t: "5. Lat Pulldown x1", s: 1, w: "35", r: "" },
@@ -238,7 +237,7 @@ var PROGRAM = {
     { t: "4. Rear delt cable fly x1", s: 1, w: "8.75", r: "8" },
     { t: "5. Standing cable Curl x2", s: 2, w: "13.75", r: "7" },
     { t: "6. Cable Hammer Curl x1", s: 1, w: "13.6", r: "" },
-    { t: "7. Abs Crunch x2", s: 2, w: "90", r: "5" }
+    { t: "7. Abs Crunch x2", s: 2, w: "70+15", r: "5" }
   ]},
   SUN: { label: "SUNDAY (CARDIO)", cardio: "1 hour" }
 };
@@ -301,6 +300,9 @@ function load() {
   return { log: {}, notes: {} };
 }
 var db = load();
+// one-time: wipe the test taps so every exercise starts from the program numbers again (notes/settings kept)
+var RESET_ONCE = "r1", didReset = false;
+if (db.resetOnce !== RESET_ONCE) { db.log = {}; db.prs = {}; db.resetOnce = RESET_ONCE; didReset = true; try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) {} }
 // notes written next to each exercise in the original program text (verbatim). Seeded once;
 // notes the user already has are never overwritten, and edits/clears afterwards stick.
 var SEED_NOTES = {
@@ -947,13 +949,6 @@ document.getElementById("pgo").onclick = function () {
   var c = document.querySelector(".card.cur"); if (c) c.scrollIntoView({ behavior: "smooth", block: "center" });
 };
 document.getElementById("cfgBtn").onclick = function () { document.getElementById("cfg").classList.toggle("on"); };
-// back to the program's starting numbers: clears every logged session and saved PR; notes and settings stay
-document.getElementById("resetAll").onclick = function () {
-  if (!confirm("ล้างน้ำหนัก/reps/✓ ที่บันทึกไว้ทั้งหมด และกลับเป็นค่าเดิมตามโปรแกรม?\n(โน้ตและการตั้งค่ายังอยู่)")) return;
-  stopRest();
-  db.log = {}; db.prs = {};
-  save(); render();
-};
 var pushOn = document.getElementById("pushOn"), pushTopic = document.getElementById("pushTopic");
 var iosOn = document.getElementById("iosOn"), iosName = document.getElementById("iosName");
 pushOn.checked = !!push.on; pushTopic.value = push.topic; iosOn.checked = !!ios.on; iosName.value = ios.name || "Gym Rest";
@@ -1036,6 +1031,7 @@ document.getElementById("ghSync").onclick = function () { syncNow(true); };
 document.addEventListener("visibilitychange", function () { if (document.visibilityState === "hidden") syncNow(); });
 paintGh();
 if (gh.token) setTimeout(syncNow, 3000);
+if (didReset) { stopRest(); render(); }
 document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") flushKill(); });
 iosOn.onchange = function () { ios.on = iosOn.checked; saveCfg(); };
 iosName.oninput = function () { ios.name = iosName.value.trim(); saveCfg(); };
