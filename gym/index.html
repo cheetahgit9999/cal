@@ -116,12 +116,28 @@ input[type=date]{background:#0b0e13;border:1px solid #30363d;border-radius:8px;p
     <button id="today" class="ghost">วันนี้</button>
   </div>
   <div class="tabs" id="tabs"></div>
-  <div class="rule">เรนจ์ <b>5–10 reps</b> · เล่นได้ <b>11 reps</b> เมื่อไหร่ = ครั้งหน้า<b>เพิ่มน้ำหนัก</b> · กด ✓ เมื่อทำเซ็ตนั้นเสร็จ (ตัวเลขเดิมจากครั้งก่อนเติมให้แล้ว)</div>
+  <div class="rule">เรนจ์ <b>5–10 reps</b> · เล่นได้ <b>11 reps</b> เมื่อไหร่ = ครั้งหน้า<b>เพิ่มน้ำหนัก</b> · กด ✓ เมื่อทำเซ็ตนั้นเสร็จ — <b>เล่นท่าไหนก่อนก็ได้</b> ✓ ตรงไหนก็จับเวลาพักให้</div>
 
   <div id="list"></div>
 
   <div class="ios">
-    <label><input type="checkbox" id="iosOn"> ⏰ ตั้งเวลาใน iPhone อัตโนมัติทุกครั้งที่กด ✓</label>
+    <label><input type="checkbox" id="pushOn"> 📲 แจ้งเตือนเข้า iPhone เมื่อพักครบ 3 นาที (แอป ntfy) — แนะนำ</label>
+    <div class="rw">หัวข้อ <input type="text" id="pushTopic" readonly><button id="pushCopy">คัดลอก</button><button id="pushTest">ทดสอบ</button></div>
+    <details>
+      <summary>วิธีตั้งค่าครั้งแรก (ทำครั้งเดียว ~1 นาที)</summary>
+      <ol>
+        <li>โหลดแอป <b>ntfy</b> จาก App Store (ฟรี)</li>
+        <li>เปิดแอป → อนุญาตการแจ้งเตือน (<b>Allow</b>)</li>
+        <li>แตะ <b>+</b> → ช่อง Topic วางชื่อหัวข้อด้านบน (กด "คัดลอก" ก่อน) → <b>Subscribe</b></li>
+        <li>กลับมาหน้านี้ ติ๊กช่อง 📲 แล้วกด <b>ทดสอบ</b> — ควรมีแจ้งเตือนเด้งภายในไม่กี่วินาที</li>
+      </ol>
+      หลังจากนั้นกด ✓ ปุ๊บ ไม่ต้องสลับแอป ไปทำอย่างอื่นหรือล็อกจอได้เลย ครบ 3 นาที iPhone จะเด้งแจ้งเตือน "ครบ 3 นาทีแล้ว" พร้อมบอกเซ็ตถัดไป แตะแจ้งเตือนเพื่อกลับมาหน้านี้<br>
+      ชื่อหัวข้อสุ่มไว้ให้แล้ว อย่าแชร์ให้คนอื่น (ใครรู้ชื่อก็ส่งแจ้งเตือนเข้าหัวข้อนี้ได้)
+    </details>
+  </div>
+
+  <div class="ios">
+    <label><input type="checkbox" id="iosOn"> ⏰ อีกวิธี: ตั้งนาฬิกาจับเวลาใน iPhone ผ่านคำสั่งลัด</label>
     <div class="rw">ชื่อคำสั่งลัด <input type="text" id="iosName" value="Gym Rest" autocomplete="off"><button id="iosTest">ทดสอบ</button></div>
     <details>
       <summary>วิธีตั้งค่าครั้งแรก (ทำครั้งเดียว ~1 นาที)</summary>
@@ -330,11 +346,36 @@ var nextUp = null;
 function findNext() {
   var P = PROGRAM[progOf(cur)];
   if (!P.ex) return null;
+  // stay on the machine you were just using if it still has sets left
+  var onEx = timer && timer.ex;
+  for (var k = 0; k < P.ex.length; k++) if (P.ex[k].t === onEx) {
+    var cs = setsFor(progOf(cur), P.ex[k], cur).sets;
+    for (var j = 0; j < cs.length; j++) if (!cs[j].done) return { t: P.ex[k].t, i: j, n: cs.length, w: cs[j].w, r: cs[j].r };
+  }
   for (var a = 0; a < P.ex.length; a++) {
     var ss = setsFor(progOf(cur), P.ex[a], cur).sets;
     for (var b = 0; b < ss.length; b++) if (!ss[b].done) return { t: P.ex[a].t, i: b, n: ss.length, w: ss[b].w, r: ss[b].r };
   }
   return null;
+}
+
+// ===== push via ntfy.sh: schedule a notification 3 min out, no app switching =====
+var NKEY = "gym.push", push = { on: false, topic: "" };
+try { var _n = JSON.parse(localStorage.getItem(NKEY)); if (_n) push = _n; } catch (e) {}
+if (!push.topic) {
+  var rnd = new Uint8Array(8); crypto.getRandomValues(rnd);
+  push.topic = "gymrest-" + Array.prototype.map.call(rnd, function (b) { return ("0" + b.toString(16)).slice(-2); }).join("");
+}
+function savePush() { try { localStorage.setItem(NKEY, JSON.stringify(push)); } catch (e) {} }
+savePush();
+function sendPush(delayed) {
+  var nx = nextUp ? "ถัดไป: " + nextUp.t + " · เซ็ต " + (nextUp.i + 1) + "/" + nextUp.n : "ครบทุกเซ็ตแล้ว 🎉";
+  var q = "title=" + encodeURIComponent(delayed ? "ครบ 3 นาทีแล้ว ✓" : "ทดสอบแจ้งเตือน ✓") + "&priority=high&tags=muscle";
+  if (delayed) q += "&delay=3m";
+  if (/^https?:/.test(location.href)) q += "&click=" + encodeURIComponent(location.href.split("#")[0]);
+  return fetch("https://ntfy.sh/" + push.topic + "?" + q, { method: "POST", body: delayed ? nx : "ถ้าเห็นข้อความนี้ = ใช้ได้แล้ว" })
+    .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return true; })
+    .catch(function (e) { if (!delayed) alert("ส่งไม่ได้: " + e.message); return false; });
 }
 
 // ===== iPhone: run a Shortcut that starts a 3-min Clock timer (rings even when locked / in other apps) =====
@@ -355,7 +396,7 @@ try { timer = JSON.parse(localStorage.getItem(TKEY)); } catch (e) {}
 var audio = null;
 function startRest(id, title, i, n) {
   try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch (e) {}
-  timer = { id: id, start: Date.now(), last: title + " · เซ็ต " + (i + 1) + "/" + n, popped: false };
+  timer = { id: id, ex: title, start: Date.now(), last: title + " · เซ็ต " + (i + 1) + "/" + n, popped: false };
   saveTimer(); closePop(); wake(true);
 }
 function saveTimer() { try { timer ? localStorage.setItem(TKEY, JSON.stringify(timer)) : localStorage.removeItem(TKEY); } catch (e) {} }
@@ -460,6 +501,7 @@ function card(prog, item, sets) {
       if (s.done) startRest(id, item.t, i, sets.length);
       else if (timer && timer.id === id) stopRest();
       render();
+      if (s.done && push.on) sendPush(true);
       if (s.done && ios.on) runShortcut();
     };
     row.appendChild(ok);
@@ -528,6 +570,15 @@ document.getElementById("prev").onclick = function () { cur = shift(cur, -1); re
 document.getElementById("next").onclick = function () { cur = shift(cur, 1); render(); };
 document.getElementById("tstop").onclick = stopRest;
 document.getElementById("prest").onclick = closePop;
+var pushOn = document.getElementById("pushOn"), pushTopic = document.getElementById("pushTopic");
+pushOn.checked = !!push.on; pushTopic.value = push.topic;
+pushOn.onchange = function () { push.on = pushOn.checked; savePush(); };
+document.getElementById("pushCopy").onclick = function () {
+  pushTopic.select();
+  (navigator.clipboard ? navigator.clipboard.writeText(push.topic) : Promise.reject()).catch(function () { document.execCommand("copy"); });
+  this.textContent = "คัดลอกแล้ว ✓";
+};
+document.getElementById("pushTest").onclick = function () { var b = this; sendPush(false).then(function (ok) { if (ok) b.textContent = "ส่งแล้ว ✓"; }); };
 var iosOn = document.getElementById("iosOn"), iosName = document.getElementById("iosName");
 iosOn.checked = !!ios.on; iosName.value = ios.name || "Gym Rest";
 iosOn.onchange = function () { ios.on = iosOn.checked; saveIos(); };
