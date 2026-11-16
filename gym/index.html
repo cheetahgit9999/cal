@@ -18,7 +18,7 @@ button:active{background:#30363d}
 .bar .d{flex:1;text-align:center;font-weight:600;font-size:15px}
 .bar .d.t{color:#3fb950}
 .tabs{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:12px}
-.tabs button{padding:6px 0;font-size:13px}
+.tabs button{padding:7px 0;font-size:12px;font-weight:600;letter-spacing:.02em}
 .tabs button.on{background:#1f6feb;border-color:#1f6feb;color:#fff}
 .tabs button.td{box-shadow:inset 0 -2px 0 #3fb950}
 .card{border:1px solid #21262d;border-radius:14px;background:#151a21;padding:10px 12px;margin-bottom:8px}
@@ -37,7 +37,8 @@ button:active{background:#30363d}
 .ok.on{background:#238636;border-color:#238636;color:#fff}
 .hist{margin-top:8px;font-size:12.5px;color:#8b949e;font-variant-numeric:tabular-nums}
 .hist div{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1b2028}
-.rest{color:#6e7681;padding:40px 0;text-align:center;font-size:22px}
+.ph{text-align:center;font-size:26px;font-weight:800;letter-spacing:.04em;margin:6px 0 14px;line-height:1.2}
+.ph.dim{color:#6e7681;margin-top:40px}
 .foot{margin-top:20px;display:flex;gap:8px;justify-content:center}
 .foot button{color:#8b949e}
 #cfg{display:none;margin-top:10px;border:1px solid #21262d;border-radius:12px;padding:10px;font-size:13px;color:#8b949e}
@@ -145,7 +146,7 @@ var PROGRAM = {
   SUN: { label: "SUNDAY (CARDIO)", cardio: "1 hour" }
 };
 var ORDER = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
-var SHORT = { MON: "จ", TUE: "อ", WED: "พ", THU: "พฤ", FRI: "ศ", SAT: "ส", SUN: "อา" };
+var SHORT = { MON: "MON", TUE: "TUE", WED: "WED", THU: "THU", FRI: "FRI", SAT: "SAT", SUN: "SUN" };
 var REP_MIN = 5, REP_MAX = 10, REP_BUMP = 11, REST_GOAL = 180;
 
 // ===== storage =====
@@ -182,7 +183,7 @@ function dayKey(d) {
 function kDate(k) { return new Date(k + "T12:00:00+07:00"); }
 function shift(k, n) { return dayKey(new Date(kDate(k).getTime() + n * 86400000)); }
 function weekdayOf(k) { return ORDER[(kDate(k).getUTCDay() + 6) % 7]; }
-function dLabel(k) { return new Intl.DateTimeFormat("th-TH", { timeZone: TZ, weekday: "short", day: "numeric", month: "short" }).format(kDate(k)); }
+function dLabel(k) { return new Intl.DateTimeFormat("en-GB", { timeZone: TZ, weekday: "short", day: "numeric", month: "short" }).format(kDate(k)); }
 var TODAY = dayKey(new Date()), cur = TODAY;
 function progOf(k) { return (db.log[k] && db.log[k].prog) || weekdayOf(k); }
 
@@ -236,7 +237,8 @@ function render() {
   });
   var list = document.getElementById("list"); list.innerHTML = "";
   nextUp = findNext();
-  if (P.rest) { list.appendChild(el("div", "rest", "REST")); updateTimer(); return; }
+  list.appendChild(el("div", "ph" + (P.rest ? " dim" : ""), P.label));
+  if (P.rest) { updateTimer(); return; }
   if (P.cardio) {
     var c = el("div", "card"), done = !!(db.log[cur] && db.log[cur].cardio);
     c.style.display = "flex"; c.style.justifyContent = "space-between"; c.style.alignItems = "center";
