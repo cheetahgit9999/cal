@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Gym">
+<title>Gym · Progressive Overload</title>
+<style>
+:root{color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:#0e1116;color:#e6edf3;font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans Thai",sans-serif;padding:18px 16px 60px}
+.wrap{max-width:760px;margin:0 auto}
+a{color:#2f81f7;text-decoration:none}
+.top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+h1{font-size:19px;margin:0;font-weight:650}
+.meta{color:#8b949e;font-size:12.5px;margin:4px 0 14px}
+.meta b{color:#adbac7;font-weight:600}
+.bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+input,button{font:inherit;color:inherit}
+input[type=date],input[type=text],input[type=number]{background:#0b0e13;border:1px solid #30363d;border-radius:8px;padding:7px 9px;min-width:0}
+input:focus{outline:none;border-color:#2f81f7}
+button{background:#21262d;border:1px solid #30363d;border-radius:8px;padding:7px 12px;cursor:pointer}
+button:active{background:#30363d}
+button.pri{background:#1f6feb;border-color:#1f6feb;color:#fff}
+button.ghost{background:none;border-color:transparent;color:#8b949e;padding:4px 8px}
+.src{font-size:12.5px;color:#8b949e;margin-bottom:10px}
+.card{border:1px solid #21262d;border-radius:12px;background:#151a21;padding:12px;margin-bottom:10px}
+.card.done{border-color:#238636}
+.ch{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.nm{font-weight:650;font-size:16px;cursor:pointer}
+.last{color:#8b949e;font-size:12.5px;margin-top:2px}
+.tgt{font-size:12.5px;color:#d29922;margin-top:2px}
+.sets{margin-top:10px}
+.set{display:grid;grid-template-columns:28px 1fr 14px 1fr 32px;gap:6px;align-items:center;margin-bottom:6px}
+.set .i{color:#6e7681;font-size:12px;text-align:center;font-variant-numeric:tabular-nums}
+.set .x{color:#6e7681;text-align:center}
+.set input{width:100%;text-align:center;font-variant-numeric:tabular-nums}
+.unit{font-size:11px;color:#6e7681}
+.row{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-top:4px}
+.sum{font-size:12.5px;color:#8b949e;font-variant-numeric:tabular-nums}
+.up{color:#3fb950}.dn{color:#f85149}.eq{color:#8b949e}
+.hist{margin-top:10px;border-top:1px solid #21262d;padding-top:8px;font-size:12.5px;color:#8b949e}
+.hist table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.hist td{padding:3px 4px;border-bottom:1px solid #1b2028;vertical-align:top}
+.hist td:first-child{white-space:nowrap;color:#adbac7}
+svg{display:block;width:100%;height:70px;margin:4px 0 8px}
+.add{display:flex;gap:8px;margin:14px 0}
+.add input{flex:1}
+.empty{color:#6e7681;padding:20px 0}
+.foot{margin-top:24px;display:flex;gap:8px;flex-wrap:wrap;color:#6e7681;font-size:12px;align-items:center}
+.toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#238636;color:#fff;padding:8px 14px;border-radius:20px;font-size:13px;opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.on{opacity:1}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1>🏋️ Gym · Progressive Overload</h1>
+    <a href="../">← ตาราง</a>
+  </div>
+  <div class="meta"><b id="dlabel">—</b> · บันทึกอัตโนมัติในเครื่องนี้</div>
+
+  <div class="bar">
+    <button id="prev" aria-label="วันก่อน">‹</button>
+    <input type="date" id="day">
+    <button id="next" aria-label="วันถัดไป">›</button>
+    <button id="today" class="ghost">วันนี้</button>
+  </div>
+
+  <div id="src" class="src"></div>
+  <div id="list" class="empty">กำลังโหลด…</div>
+
+  <div class="add">
+    <input type="text" id="newEx" placeholder="เพิ่มท่า เช่น Bench Press" autocomplete="off" list="exNames">
+    <datalist id="exNames"></datalist>
+    <button class="pri" id="addBtn">เพิ่ม</button>
+  </div>
+
+  <div class="foot">
+    <button id="exp">Export ข้อมูล</button>
+    <button id="imp">Import</button>
+    <input type="file" id="impFile" accept="application/json,.json" hidden>
+    <span>ข้อมูลอยู่ในเบราว์เซอร์นี้เท่านั้น — Export เก็บไว้เป็นระยะ</span>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+var TZ = "Asia/Bangkok";
+var KEY = "gym.v1";
+var STEP_KG = 2.5; // weight jump suggested once all sets hit their reps
+var API = "https://script.google.com/macros/s/AKfycbz7tH4iscyXCdtJB4T8GL34Ppp9PuEuUIsw8MjQ-ii3_4Ie6DvusFw8PfhAZ8gjKEJA/exec?format=json&t=";
+var GYM_RE = /gym|ยิม|เวท|workout|ออกกำลัง|fitness|weight/i;
+
+// ---------- storage ----------
+function load() {
+  try {
+    var d = JSON.parse(localStorage.getItem(KEY));
+    if (d && d.log) return { exercises: d.exercises || [], log: d.log, plan: d.plan || {} };
+  } catch (e) {}
+  return { exercises: [], log: {}, plan: {} };
+}
+var db = load();
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(db)); }
+  catch (e) { toast("บันทึกไม่ได้: " + e.message); }
+}
+
+// ---------- dates (Bangkok) ----------
+function dayKey(d) {
+  var p = new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit" })
+    .formatToParts(d).reduce(function (a, x) { a[x.type] = x.value; return a; }, {});
+  return p.year + "-" + p.month + "-" + p.day;
+}
+function keyToDate(k) { return new Date(k + "T12:00:00+07:00"); }
+function shiftKey(k, n) { return dayKey(new Date(keyToDate(k).getTime() + n * 86400000)); }
+function longLabel(k) {
+  return new Intl.DateTimeFormat("th-TH", { timeZone: TZ, weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(keyToDate(k));
+}
+function shortLabel(k) {
+  return new Intl.DateTimeFormat("th-TH", { timeZone: TZ, weekday: "short", day: "numeric", month: "short" }).format(keyToDate(k));
+}
+var TODAY = dayKey(new Date());
+var cur = TODAY;
+
+// ---------- math ----------
+function num(v) { var n = parseFloat(v); return isFinite(n) ? n : 0; }
+function valid(s) { return s && num(s.w) >= 0 && num(s.r) > 0 && s.w !== "" && s.r !== ""; }
+function e1rm(w, r) { return r > 0 ? w * (1 + r / 30) : 0; } // Epley
+function stats(sets) {
+  var v = 0, best = 0, top = 0;
+  (sets || []).filter(valid).forEach(function (s) {
+    var w = num(s.w), r = num(s.r);
+    v += w * r; best = Math.max(best, e1rm(w, r)); top = Math.max(top, w);
+  });
+  return { vol: v, e1: best, top: top, n: (sets || []).filter(valid).length };
+}
+function fmt(n) { return (Math.round(n * 10) / 10).toString(); }
+function setsText(sets) {
+  return sets.filter(valid).map(function (s) { return fmt(num(s.w)) + "×" + num(s.r); }).join(", ");
+}
+
+// previous session (strictly before `k`) that has at least one valid set
+function lastSession(name, k) {
+  var days = Object.keys(db.log).filter(function (d) { return d < k; }).sort().reverse();
+  for (var i = 0; i < days.length; i++) {
+    var s = db.log[days[i]][name];
+    if (s && s.filter(valid).length) return { day: days[i], sets: s.filter(valid) };
+  }
+  return null;
+}
+function history(name) {
+  return Object.keys(db.log).sort().map(function (d) {
+    var s = (db.log[d][name] || []).filter(valid);
+    return s.length ? { day: d, sets: s, st: stats(s) } : null;
+  }).filter(Boolean);
+}
+
+// Double progression: if every set last time matched the first set's reps at the same weight,
+// add weight; otherwise keep the weight and beat the reps.
+function target(last) {
+  if (!last) return null;
+  var s = last.sets, w = num(s[0].w), r = num(s[0].r);
+  var allHit = s.every(function (x) { return num(x.w) >= w && num(x.r) >= r; });
+  if (allHit) return { text: "ลอง " + fmt(w + STEP_KG) + " kg × " + r + "  หรือ  " + fmt(w) + " kg × " + (r + 1), w: w + STEP_KG, r: r };
+  var minR = Math.min.apply(null, s.map(function (x) { return num(x.r); }));
+  return { text: "ยังที่ " + fmt(w) + " kg — ทำให้ทุกเซ็ตได้ " + r + " ครั้ง (ครั้งก่อนต่ำสุด " + minR + ")", w: w, r: r };
+}
+
+// ---------- which exercises to show ----------
+function namesFor(k) {
+  var out = [];
+  function push(n) { if (n && out.indexOf(n) < 0) out.push(n); }
+  (db.plan[k] || []).forEach(push);
+  Object.keys(db.log[k] || {}).forEach(push);
+  if (!out.length && k === TODAY) db.exercises.forEach(push);
+  return out;
+}
+function rememberName(n) {
+  if (db.exercises.indexOf(n) < 0) db.exercises.push(n);
+}
+
+// ---------- calendar import ----------
+// Lines like "1. Bench Press 3x8 @60kg" -> "Bench Press"
+function cleanLine(line) {
+  return line
+    .replace(/^\s*[-•*·▪︎◦•]+\s*/, "")
+    .replace(/^\s*\d+[.)]\s*/, "")
+    .replace(/\s*[\(\[]?\s*\d+\s*(?:sets?|เซ็ต)?\s*[x×*]\s*\d+.*$/i, "")
+    .replace(/\s*@.*$/, "")
+    .replace(/\s*[:\-–—]\s*$/, "")
+    .trim();
+}
+function fromCalendar() {
+  return fetch(API + Date.now(), { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (data) {
+    var start = new Date(TODAY + "T00:00:00+07:00").getTime(), end = start + 86400000;
+    var ev = (data.events || []).filter(function (e) {
+      return new Date(e.start).getTime() < end && new Date(e.end).getTime() > start &&
+        GYM_RE.test((e.title || "") + " " + (e.description || ""));
+    })[0];
+    if (!ev) return null;
+    var names = String(ev.description || "").replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, "")
+      .split(/\n+/).map(cleanLine).filter(function (n) {
+        return n && n.length <= 60 && /[A-Za-z\u0E00-\u0E7F]/.test(n) && !/^(gym|workout|ยิม|เวท|ออกกำลังกาย)$/i.test(n);
+      });
+    return { title: ev.title, names: names };
+  });
+}
+
+// ---------- render ----------
+var openHist = {};
+function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+
+function render() {
+  document.getElementById("day").value = cur;
+  document.getElementById("dlabel").textContent = longLabel(cur) + (cur === TODAY ? " (วันนี้)" : "");
+  var dl = document.getElementById("exNames"); dl.innerHTML = "";
+  db.exercises.forEach(function (n) { var o = el("option"); o.value = n; dl.appendChild(o); });
+
+  var list = document.getElementById("list");
+  var names = namesFor(cur);
+  list.innerHTML = ""; list.className = "";
+  if (!names.length) {
+    list.className = "empty";
+    list.textContent = db.exercises.length ? "วันนี้ยังไม่ได้เลือกท่า — พิมพ์ชื่อท่าด้านล่างเพื่อเริ่ม" : "ยังไม่มีท่า — เพิ่มชื่อท่าด้านล่าง";
+    return;
+  }
+  names.forEach(function (n) { list.appendChild(card(n)); });
+}
+
+function card(name) {
+  var c = el("div", "card");
+  var sets = (db.log[cur] && db.log[cur][name]) || [];
+  var last = lastSession(name, cur);
+  var tg = target(last);
+
+  var head = el("div", "ch");
+  var left = el("div");
+  var nm = el("div", "nm", name);
+  nm.title = "แตะเพื่อดูประวัติ";
+  nm.onclick = function () { openHist[name] = !openHist[name]; render(); };
+  left.appendChild(nm);
+  left.appendChild(el("div", "last", last ? "ครั้งก่อน " + shortLabel(last.day) + ": " + setsText(last.sets) : "ครั้งแรก — ตั้งน้ำหนักเริ่มต้น"));
+  if (tg) left.appendChild(el("div", "tgt", "🎯 " + tg.text));
+  head.appendChild(left);
+  var rm = el("button", "ghost", "✕");
+  rm.title = "เอาท่านี้ออกจากวันนี้";
+  rm.onclick = function () {
+    if (sets.filter(valid).length && !confirm("ลบ " + name + " และเซ็ตที่บันทึกของวันนี้?")) return;
+    if (db.log[cur]) { delete db.log[cur][name]; if (!Object.keys(db.log[cur]).length) delete db.log[cur]; }
+    if (db.plan[cur]) db.plan[cur] = db.plan[cur].filter(function (x) { return x !== name; });
+    if (cur === TODAY && !db.plan[cur]) db.plan[cur] = namesFor(cur).filter(function (x) { return x !== name; });
+    save(); render();
+  };
+  head.appendChild(rm);
+  c.appendChild(head);
+
+  var box = el("div", "sets");
+  sets.forEach(function (s, i) { box.appendChild(setRow(name, i, s)); });
+  c.appendChild(box);
+
+  var row = el("div", "row");
+  var add = el("button", null, "+ เซ็ต");
+  add.onclick = function () {
+    var arr = ensure(name);
+    var prev = arr[arr.length - 1];
+    // first set starts from the overload target; later sets copy the previous one
+    arr.push({ w: prev ? prev.w : (tg ? fmt(tg.w) : ""), r: prev ? prev.r : (tg ? String(tg.r) : "") });
+    save(); render();
+    var inputs = document.querySelectorAll(".card input[data-ex='" + CSS.escape(name) + "'][data-f=r]");
+    if (inputs.length) inputs[inputs.length - 1].focus();
+  };
+  row.appendChild(add);
+  row.appendChild(summary(sets, last));
+  c.appendChild(row);
+
+  var st = stats(sets);
+  if (last && st.n && (st.e1 > stats(last.sets).e1 || st.vol > stats(last.sets).vol)) c.classList.add("done");
+
+  if (openHist[name]) c.appendChild(histBox(name));
+  return c;
+}
+
+function ensure(name) {
+  if (!db.log[cur]) db.log[cur] = {};
+  if (!db.log[cur][name]) db.log[cur][name] = [];
+  rememberName(name);
+  return db.log[cur][name];
+}
+
+function setRow(name, i, s) {
+  var r = el("div", "set");
+  r.appendChild(el("div", "i", String(i + 1)));
+  var w = el("input"); w.type = "number"; w.inputMode = "decimal"; w.step = "any"; w.min = "0"; w.placeholder = "kg"; w.value = s.w;
+  var x = el("div", "x", "×");
+  var rp = el("input"); rp.type = "number"; rp.inputMode = "numeric"; rp.step = "1"; rp.min = "0"; rp.placeholder = "ครั้ง"; rp.value = s.r;
+  w.dataset.ex = rp.dataset.ex = name; w.dataset.f = "w"; rp.dataset.f = "r";
+  function upd() { s.w = w.value; s.r = rp.value; save(); refreshSummary(r.closest(".card"), name); }
+  w.oninput = upd; rp.oninput = upd;
+  var del = el("button", "ghost", "–"); del.title = "ลบเซ็ต";
+  del.onclick = function () { db.log[cur][name].splice(i, 1); save(); render(); };
+  r.appendChild(w); r.appendChild(x); r.appendChild(rp); r.appendChild(del);
+  return r;
+}
+
+function cmp(a, b) {
+  if (!b) return "";
+  var d = a - b, pct = b ? (d / b) * 100 : 0;
+  if (Math.abs(d) < 0.05) return "<span class=eq>=</span>";
+  return d > 0 ? "<span class=up>▲" + fmt(pct) + "%</span>" : "<span class=dn>▼" + fmt(-pct) + "%</span>";
+}
+function summary(sets, last) {
+  var s = el("div", "sum");
+  var a = stats(sets), b = last ? stats(last.sets) : null;
+  if (!a.n) { s.textContent = b ? "ครั้งก่อน: volume " + fmt(b.vol) + " · 1RM≈" + fmt(b.e1) : ""; return s; }
+  s.innerHTML = "volume " + fmt(a.vol) + " " + cmp(a.vol, b && b.vol) + " · 1RM≈" + fmt(a.e1) + " " + cmp(a.e1, b && b.e1);
+  return s;
+}
+function refreshSummary(card, name) {
+  var sets = db.log[cur][name], last = lastSession(name, cur);
+  var old = card.querySelector(".sum");
+  old.replaceWith(summary(sets, last));
+  var st = stats(sets), lt = last && stats(last.sets);
+  card.classList.toggle("done", !!(lt && st.n && (st.e1 > lt.e1 || st.vol > lt.vol)));
+}
+
+function histBox(name) {
+  var h = el("div", "hist");
+  var rows = history(name);
+  if (!rows.length) { h.textContent = "ยังไม่มีประวัติ"; return h; }
+  if (rows.length > 1) h.appendChild(spark(rows.map(function (x) { return x.st.e1; })));
+  var t = el("table");
+  rows.slice().reverse().slice(0, 20).forEach(function (x) {
+    var tr = el("tr");
+    tr.appendChild(el("td", null, shortLabel(x.day)));
+    tr.appendChild(el("td", null, setsText(x.sets)));
+    tr.appendChild(el("td", null, "1RM≈" + fmt(x.st.e1)));
+    t.appendChild(tr);
+  });
+  h.insertBefore(el("div", null, "1RM โดยประมาณ (" + rows.length + " ครั้ง)"), h.firstChild);
+  h.appendChild(t);
+  return h;
+}
+function spark(vals) {
+  var W = 300, H = 70, P = 6;
+  var mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals), rg = mx - mn || 1;
+  var pts = vals.map(function (v, i) {
+    return [P + (i / (vals.length - 1)) * (W - 2 * P), H - P - ((v - mn) / rg) * (H - 2 * P)];
+  });
+  var ns = "http://www.w3.org/2000/svg", svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("viewBox", "0 0 " + W + " " + H); svg.setAttribute("preserveAspectRatio", "none");
+  var pl = document.createElementNS(ns, "polyline");
+  pl.setAttribute("points", pts.map(function (p) { return p.join(","); }).join(" "));
+  pl.setAttribute("fill", "none"); pl.setAttribute("stroke", "#2f81f7"); pl.setAttribute("stroke-width", "2");
+  pl.setAttribute("vector-effect", "non-scaling-stroke");
+  svg.appendChild(pl);
+  var lp = pts[pts.length - 1], c = document.createElementNS(ns, "circle");
+  c.setAttribute("cx", lp[0]); c.setAttribute("cy", lp[1]); c.setAttribute("r", "3"); c.setAttribute("fill", "#3fb950");
+  svg.appendChild(c);
+  return svg;
+}
+
+// ---------- actions ----------
+function addExercise(n) {
+  n = String(n || "").trim();
+  if (!n) return;
+  rememberName(n);
+  var names = namesFor(cur);
+  if (names.indexOf(n) < 0) names.push(n);
+  db.plan[cur] = names;
+  save(); render();
+}
+document.getElementById("addBtn").onclick = function () {
+  var i = document.getElementById("newEx"); addExercise(i.value); i.value = "";
+};
+document.getElementById("newEx").onkeydown = function (e) { if (e.key === "Enter") document.getElementById("addBtn").click(); };
+document.getElementById("day").onchange = function (e) { if (e.target.value) { cur = e.target.value; render(); } };
+document.getElementById("prev").onclick = function () { cur = shiftKey(cur, -1); render(); };
+document.getElementById("next").onclick = function () { cur = shiftKey(cur, 1); render(); };
+document.getElementById("today").onclick = function () { cur = TODAY; render(); };
+
+document.getElementById("exp").onclick = function () {
+  var blob = new Blob([JSON.stringify(db, null, 1)], { type: "application/json" });
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = "gym-" + TODAY + ".json";
+  document.body.appendChild(a); a.click(); a.remove();
+};
+document.getElementById("imp").onclick = function () { document.getElementById("impFile").click(); };
+document.getElementById("impFile").onchange = function (e) {
+  var f = e.target.files[0]; if (!f) return;
+  f.text().then(function (t) {
+    var d = JSON.parse(t);
+    if (!d || !d.log) throw new Error("ไฟล์ไม่ถูกต้อง");
+    if (!confirm("แทนที่ข้อมูลในเครื่องนี้ด้วยไฟล์นี้?")) return;
+    db = { exercises: d.exercises || [], log: d.log, plan: d.plan || {} };
+    save(); render(); toast("Import แล้ว");
+  }).catch(function (err) { toast("Import ไม่ได้: " + err.message); });
+  e.target.value = "";
+};
+
+var tt;
+function toast(m) {
+  var t = document.getElementById("toast"); t.textContent = m; t.classList.add("on");
+  clearTimeout(tt); tt = setTimeout(function () { t.classList.remove("on"); }, 2200);
+}
+
+// ---------- boot ----------
+render();
+var src = document.getElementById("src");
+fromCalendar().then(function (r) {
+  if (!r || !r.names.length) { src.textContent = r ? "ปฏิทินวันนี้: " + r.title + " (ไม่มีรายชื่อท่าในรายละเอียด)" : ""; return; }
+  src.textContent = "ท่าจากปฏิทินวันนี้ · " + r.title;
+  r.names.forEach(rememberName);
+  var names = namesFor(TODAY);
+  r.names.forEach(function (n) { if (names.indexOf(n) < 0) names.push(n); });
+  db.plan[TODAY] = names;
+  save();
+  if (cur === TODAY) render();
+}).catch(function () { /* offline is fine — local list still works */ });
+</script>
+</body>
+</html>
