@@ -172,18 +172,18 @@ var PROGRAM = {
     { t: "2. Hack squat x2", s: 2, w: "10", r: "6" },
     { t: "3. Hamstring Curl x2", s: 2, w: "50", r: "7" },
     { t: "4. SLDL x2", s: 2, w: "27.5", r: "8" },
-    { t: "6. Abs Crunch x2", s: 2, w: "90", r: "5" }
+    { t: "5. Abs Crunch x2", s: 2, w: "90", r: "5" }
   ]},
   THU: { label: "THURSDAY (REST)", rest: true },
   FRI: { label: "FRIDAY (PUSH)", ex: [
-    { t: "3. Machine Pec Deck x2", s: 2, w: "30+15", r: "9" },
-    { t: "4. Incline Chest Press x2", s: 2, w: "50+15", r: "5" },
-    { t: "5. Shoulder Press x1", s: 1, w: "50", r: "4" },
-    { t: "6. Lateral Raise x2", s: 2, w: "50", r: "7" },
-    { t: "7. Cable Tricep Extension x1 (2 min)", s: 1, w: "13.75", r: "" },
-    { t: "9. Cable Overhead Tricep Extension x1", s: 1, w: "11.25", r: "7" },
-    { t: "1. Standing Calf Raise x2", s: 2, w: "70", r: "10" },
-    { t: "2. Adductor x1", s: 1, w: "50+15", r: "7" }
+    { t: "1. Machine Pec Deck x2", s: 2, w: "30+15", r: "9" },
+    { t: "2. Incline Chest Press x2", s: 2, w: "50+15", r: "5" },
+    { t: "3. Shoulder Press x1", s: 1, w: "50", r: "4" },
+    { t: "4. Lateral Raise x2", s: 2, w: "50", r: "7" },
+    { t: "5. Cable Tricep Extension x1 (2 min)", s: 1, w: "13.75", r: "" },
+    { t: "6. Cable Overhead Tricep Extension x1", s: 1, w: "11.25", r: "7" },
+    { t: "7. Standing Calf Raise x2", s: 2, w: "70", r: "10" },
+    { t: "8. Adductor x1", s: 1, w: "50+15", r: "7" }
   ]},
   SAT: { label: "SATURDAY (PULL)", ex: [
     { t: "1. T-Bar Row x2", s: 2, w: "37.5", r: "8" },
@@ -191,7 +191,7 @@ var PROGRAM = {
     { t: "3. Close-Grip Lat Row x2", s: 2, w: "25", r: "5" },
     { t: "4. Rear delt cable fly x1", s: 1, w: "8.75", r: "8" },
     { t: "5. Standing cable Curl x2", s: 2, w: "13.75", r: "7" },
-    { t: "Cable Hammer Curl x1", s: 1, w: "13.6", r: "" },
+    { t: "6. Cable Hammer Curl x1", s: 1, w: "13.6", r: "" },
     { t: "7. Abs Crunch x2", s: 2, w: "70+15", r: "5" }
   ]},
   SUN: { label: "SUNDAY (CARDIO)", cardio: "1 hour" }
@@ -208,7 +208,18 @@ var KEY = "gym.v2";
 // renamed exercises: history logged under the old name moves to the new one
 var RENAMED = {
   TUE: { "8. Cable Hammer Curl x1 (rest 2-3min)": "8. Cable Hammer Curl x1" },
-  SAT: { "4. Rear delt ยืน x1": "4. Rear delt cable fly x1", "Cable Hammer Curl x1 (2 min)": "Cable Hammer Curl x1" }
+  WED: { "6. Abs Crunch x2": "5. Abs Crunch x2" },
+  FRI: {
+    "3. Machine Pec Deck x2": "1. Machine Pec Deck x2", "4. Incline Chest Press x2": "2. Incline Chest Press x2",
+    "5. Shoulder Press x1": "3. Shoulder Press x1", "6. Lateral Raise x2": "4. Lateral Raise x2",
+    "7. Cable Tricep Extension x1 (2 min)": "5. Cable Tricep Extension x1 (2 min)",
+    "9. Cable Overhead Tricep Extension x1": "6. Cable Overhead Tricep Extension x1",
+    "1. Standing Calf Raise x2": "7. Standing Calf Raise x2", "2. Adductor x1": "8. Adductor x1"
+  },
+  SAT: {
+    "4. Rear delt ยืน x1": "4. Rear delt cable fly x1",
+    "Cable Hammer Curl x1 (2 min)": "6. Cable Hammer Curl x1", "Cable Hammer Curl x1": "6. Cable Hammer Curl x1"
+  }
 };
 function migrate(d) {
   Object.keys(d.log || {}).forEach(function (k) {
