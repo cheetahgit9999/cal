@@ -175,6 +175,8 @@ button.muted{background:#3d1418;border-color:#7d2a30}
     <div class="r"><input type="checkbox" id="iosOn"> Shortcuts <input type="text" id="iosName"><button id="iosTest">test</button></div>
     <div class="r"><span style="width:20px;text-align:center">☁️</span> GitHub <input type="password" id="ghTok" placeholder="token" autocomplete="off"><button id="ghSync">sync</button></div>
     <div class="gs" id="ghStat"></div>
+    <div class="r"><span style="width:20px;text-align:center">🔗</span> Webhook <input type="text" id="hookUrl" placeholder="https://…" autocomplete="off" inputmode="url"><button id="hookTest">test</button></div>
+    <div class="gs" id="hookStat"></div>
   </div>
 </div>
 
@@ -534,7 +536,7 @@ function render() {
     var b = el("button", "ok" + (done ? " on" : ""), "✓"); b.style.width = "64px";
     b.onclick = function () {
       var DP = dp(cur, prog, true); DP.cardio = !done; DP.doneAt = done ? null : Date.now();
-      save(); render(); if (!done) setTimeout(function () { syncNow(); }, 500);
+      save(); render(); if (!done) { setTimeout(function () { syncNow(); }, 500); fireDone(cur, prog); }
     };
     c.appendChild(b); if (done) c.classList.add("all");
     list.appendChild(c); updateTimer(); return;
@@ -588,7 +590,7 @@ function card(prog, item) {
     var dayDone = PROGRAM[prog].ex.every(function (it) { return entryFor(prog, it, cur).d >= it.s; });
     var DP = dp(cur, prog, true);
     if (!DP.startedAt) DP.startedAt = Date.now();
-    if (dayDone) { DP.doneAt = Date.now(); save(); setTimeout(function () { syncNow(); }, 500); } // tell the data page right away
+    if (dayDone) { DP.doneAt = Date.now(); save(); setTimeout(function () { syncNow(); }, 500); fireDone(cur, prog); } // tell the data page / webhook right away
     if (dayDone) stopRest(); else startRest(prog, item.t); // no rest needed after the last set
     render();
     if (!dayDone) alertPhone();
@@ -1179,6 +1181,48 @@ document.getElementById("ghSync").onclick = function () { syncNow(true); };
 document.addEventListener("visibilitychange", function () { if (document.visibilityState === "hidden") syncNow(); });
 paintGh();
 if (gh.token) setTimeout(syncNow, 3000);
+
+// ===== webhook: fires once, the moment every set of a day is ticked (for Hermes or any agent) =====
+var HKEY = "gym.hook", hook = { url: "", last: "", err: "" };
+try { var _h = JSON.parse(localStorage.getItem(HKEY)); if (_h) hook = _h; } catch (e) {}
+function saveHook() { try { localStorage.setItem(HKEY, JSON.stringify(hook)); } catch (e) {} }
+function donePayload(k, prog, test) {
+  var st = dayStatus(k), when = st.done_at ? new Date(st.done_at) : new Date();
+  var hm = new Intl.DateTimeFormat("en-GB", { timeZone: TZ, hour: "2-digit", minute: "2-digit" }).format(when);
+  return {
+    event: test ? "gym_webhook_test" : "gym_workout_done",
+    date: k, weekday: weekdayOf(k), program: PROGRAM[prog].label,
+    sets_done: st.sets_done, sets_total: st.sets_total, started_at: st.started_at, done_at: st.done_at || when.toISOString(),
+    text: (test ? "[ทดสอบ] " : "") + "เล่นยิมเสร็จแล้ว ✅ " + PROGRAM[prog].label + " วันที่ " + k + " เวลา " + hm + " (" + st.sets_done + "/" + st.sets_total + " เซ็ต)",
+    status_url: "https://cheetahgit9999.github.io/cal/gym/status.json",
+    data_url: DATA_URL
+  };
+}
+function postHook(payload) {
+  var body = JSON.stringify(payload);
+  // JSON with CORS first; if the receiver doesn't allow CORS, send it anyway as a simple request (still delivered)
+  return fetch(hook.url, { method: "POST", headers: { "Content-Type": "application/json" }, body: body, keepalive: true })
+    .catch(function () { return fetch(hook.url, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain" }, body: body, keepalive: true }); })
+    .then(function (r) { if (r && r.type !== "opaque" && !r.ok) throw new Error("HTTP " + r.status); hook.last = Date.now(); hook.err = ""; })
+    .catch(function (e) { hook.err = e.message || String(e); })
+    .then(function () { saveHook(); paintHook(); });
+}
+function fireDone(k, prog) {
+  if (!hook.url) return;
+  var DP = dp(k, prog, true);
+  if (DP.hookSent) return; // once per day/program
+  DP.hookSent = Date.now(); save();
+  postHook(donePayload(k, prog, false));
+}
+function paintHook() {
+  var st = document.getElementById("hookStat"); if (!st) return;
+  st.textContent = !hook.url ? "ใส่ URL เพื่อแจ้ง Hermes ทันทีที่เล่นครบวัน" : hook.err ? "⚠️ " + hook.err : hook.last ? "✓ ส่งล่าสุด " + new Date(hook.last).toLocaleString("en-GB", { timeZone: TZ }) : "พร้อม — จะส่งเมื่อเล่นครบวัน";
+}
+var hookUrl = document.getElementById("hookUrl");
+hookUrl.value = hook.url || "";
+hookUrl.onchange = function () { hook.url = hookUrl.value.trim(); hook.err = ""; saveHook(); paintHook(); };
+document.getElementById("hookTest").onclick = function () { if (hook.url) postHook(donePayload(cur, view, true)); };
+paintHook();
 if (didReset) { stopRest(); render(); }
 document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") flushKill(); });
 iosOn.onchange = function () { ios.on = iosOn.checked; saveCfg(); };
