@@ -995,7 +995,12 @@ document.getElementById("impFile").onchange = function (ev) {
   f.text().then(function (t) {
     var m = t.match(/```json\s*([\s\S]*?)```/), d = JSON.parse(m ? m[1] : t);
     if (!d || !d.log) throw new Error("invalid file");
-    if (confirm("Import?")) { db = migrate(d); save(); render(); }
+    if (confirm("Import?")) {
+      db = migrate(d);
+      db.resetOnce = RESET_ONCE; // an imported file is real data: never let the one-time reset wipe it
+      if (!db.since) db.since = TODAY;
+      save(); render();
+    }
   }).catch(function (err) { alert(err.message); });
   ev.target.value = "";
 };
