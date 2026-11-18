@@ -320,6 +320,7 @@ function load() {
   return { log: {}, notes: {} };
 }
 var db = load();
+if (!db.since) { db.since = dayKey(new Date()); try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) {} }
 // one-time: wipe the test taps so every exercise starts from the program numbers again (notes/settings kept)
 var RESET_ONCE = "r1", didReset = false;
 if (db.resetOnce !== RESET_ONCE) { db.log = {}; db.prs = {}; db.resetOnce = RESET_ONCE; didReset = true; try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) {} }
@@ -531,7 +532,10 @@ function render() {
     c.style.display = "flex"; c.style.justifyContent = "space-between"; c.style.alignItems = "center";
     c.appendChild(el("div", "nm", P.cardio));
     var b = el("button", "ok" + (done ? " on" : ""), "✓"); b.style.width = "64px";
-    b.onclick = function () { dp(cur, prog, true).cardio = !done; save(); render(); };
+    b.onclick = function () {
+      var DP = dp(cur, prog, true); DP.cardio = !done; DP.doneAt = done ? null : Date.now();
+      save(); render(); if (!done) setTimeout(function () { syncNow(); }, 500);
+    };
     c.appendChild(b); if (done) c.classList.add("all");
     list.appendChild(c); updateTimer(); return;
   }
@@ -582,6 +586,9 @@ function card(prog, item) {
       render(); return;
     }
     var dayDone = PROGRAM[prog].ex.every(function (it) { return entryFor(prog, it, cur).d >= it.s; });
+    var DP = dp(cur, prog, true);
+    if (!DP.startedAt) DP.startedAt = Date.now();
+    if (dayDone) { DP.doneAt = Date.now(); save(); setTimeout(function () { syncNow(); }, 500); } // tell the data page right away
     if (dayDone) stopRest(); else startRest(prog, item.t); // no rest needed after the last set
     render();
     if (!dayDone) alertPhone();
@@ -1039,6 +1046,58 @@ var GKEY = "gym.gh", gh = { token: "", hash: "", last: "", err: "" };
 try { var _g = JSON.parse(localStorage.getItem(GKEY)); if (_g) gh = _g; } catch (e) {}
 function saveGh() { try { localStorage.setItem(GKEY, JSON.stringify(gh)); } catch (e) {} }
 function hashStr(t) { var h = 0; for (var i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) | 0; return String(h); }
+// ===== day status for agents (e.g. a calendar assistant): done / partial / skipped / rest / today / planned =====
+function isoTime(t) { return t ? new Date(t).toISOString() : null; }
+// first day the tracker was in use: days before it are "not_tracked", never "skipped"
+function trackSince() {
+  var ks = Object.keys(db.log).sort(), first = ks[0] && ks[0] < (db.since || TODAY) ? ks[0] : (db.since || TODAY);
+  return first;
+}
+function dayStatus(k) {
+  var planned = weekdayOf(k), P = PROGRAM[planned], L = db.log[k], best = null;
+  if (L) Object.keys(L.p).forEach(function (pg) {
+    var x = dp(k, pg), Q = PROGRAM[pg], got = 0, tot = 0;
+    if (Q.cardio) { got = x.cardio ? 1 : 0; tot = 1; }
+    else if (Q.ex) Q.ex.forEach(function (it) { tot += it.s; got += Math.min(it.s, (x.ex[it.t] && x.ex[it.t].d) || 0); });
+    if (got && (!best || got > best.got)) best = { prog: pg, got: got, tot: tot, x: x };
+  });
+  var o = { date: k, weekday: planned, planned_program: P.label, done_program: null, status: null, sets_done: 0, sets_total: 0, started_at: null, done_at: null };
+  if (best) {
+    o.done_program = PROGRAM[best.prog].label; o.sets_done = best.got; o.sets_total = best.tot;
+    o.status = best.got >= best.tot ? "done" : "partial";
+    o.started_at = isoTime(best.x.startedAt); o.done_at = best.got >= best.tot ? isoTime(best.x.doneAt) : null;
+  } else if (k < trackSince()) o.status = "not_tracked";
+  else if (P.rest) o.status = "rest";
+  else o.status = k < TODAY ? "skipped" : k === TODAY ? "today_not_started" : "planned";
+  return o;
+}
+function statusJSON() {
+  var days = [];
+  for (var k = shift(TODAY, -13); k <= shift(TODAY, 7); k = shift(k, 1)) days.push(dayStatus(k));
+  return JSON.stringify({
+    generated_at: new Date().toISOString(), timezone: TZ, today: TODAY,
+    status_meaning: {
+      done: "all planned sets ticked (done_at = time finished)",
+      partial: "started but not every set ticked",
+      skipped: "training day in the past with nothing logged",
+      rest: "planned rest day",
+      today_not_started: "today's training not started yet",
+      planned: "future day",
+      not_tracked: "before the tracker was in use (no information)"
+    },
+    note: "This file is refreshed whenever the tracker is open. A past date still shown as today_not_started or planned means nothing was logged that day, so treat it as skipped.",
+    days: days
+  }, null, 1);
+}
+function statusTable() {
+  var mark = { done: "✓ done", partial: "◐ partial", skipped: "✗ skipped", rest: "– rest", today_not_started: "… today, not started", planned: "planned" };
+  var o = ["| Date | Day | Program | Status | Sets | Finished at |", "|---|---|---|---|---|---|"];
+  JSON.parse(statusJSON()).days.forEach(function (d) {
+    if (d.date > TODAY || d.status === "not_tracked") return;
+    o.push("| " + d.date + " | " + d.weekday + " | " + (d.done_program || d.planned_program) + " | " + mark[d.status] + " | " + (d.sets_total ? d.sets_done + "/" + d.sets_total : "–") + " | " + (d.done_at ? new Date(d.done_at).toLocaleString("en-GB", { timeZone: TZ }) : "–") + " |");
+  });
+  return o.join("\n");
+}
 function dataDoc() {
   var ws = weekOf(TODAY);
   return [
@@ -1047,7 +1106,14 @@ function dataDoc() {
     "This page is my live gym log, published automatically from my tracker every time I log a set.",
     "If you are an AI reading this: use it to understand how I train and how I'm progressing.",
     "",
-    "Sections: 1) this week's summary, 2) last week's summary, 3) full history per exercise, 4) raw JSON.",
+    "Sections: 0) workout status per day, 1) this week's summary, 2) last week's summary, 3) full history per exercise, 4) raw JSON.",
+    "Machine-readable day status: https://cheetahgit9999.github.io/cal/gym/status.json",
+    "",
+    "---",
+    "",
+    "## 0) Workout status (last 14 days)",
+    "",
+    statusTable(),
     "",
     "---",
     "",
@@ -1077,22 +1143,31 @@ function paintGh() {
   st.appendChild(document.createTextNode((gh.err ? "⚠️ " + gh.err : gh.last ? "✓ อัปเดตล่าสุด " + new Date(gh.last).toLocaleString("en-GB", { timeZone: TZ }) : "รอ sync…") + " · "));
   var a = el("a", null, DATA_URL); a.href = DATA_URL; a.target = "_blank"; st.appendChild(a);
 }
-function syncNow(force) {
-  clearTimeout(syncT);
-  if (!gh.token || syncing) return Promise.resolve();
-  var doc = dataDoc(), h = hashStr(doc);
-  if (force !== true && h === gh.hash) return Promise.resolve();
-  syncing = true;
-  var api = "https://api.github.com/repos/" + GH.repo + "/contents/" + GH.path;
+function putFile(path, text, msg) {
+  var api = "https://api.github.com/repos/" + GH.repo + "/contents/" + path;
   var hd = { "Authorization": "Bearer " + gh.token, "Accept": "application/vnd.github+json" };
   return fetch(api + "?ref=" + GH.branch, { headers: hd, cache: "no-store" })
     .then(function (r) { if (r.status === 404) return null; if (!r.ok) throw new Error("GitHub " + r.status); return r.json(); })
     .then(function (cur_) {
-      var body = { message: "gym: data sync " + TODAY, branch: GH.branch, content: btoa(unescape(encodeURIComponent(doc))) };
+      var body = { message: msg, branch: GH.branch, content: btoa(unescape(encodeURIComponent(text))) };
       if (cur_ && cur_.sha) body.sha = cur_.sha;
       return fetch(api, { method: "PUT", headers: hd, body: JSON.stringify(body) });
     })
-    .then(function (r) { if (!r.ok) throw new Error("GitHub " + r.status + (r.status === 401 ? " (token ผิด/หมดอายุ)" : r.status === 403 || r.status === 404 ? " (token ไม่มีสิทธิ์เขียน repo นี้)" : "")); gh.hash = h; gh.last = Date.now(); gh.err = ""; })
+    .then(function (r) { if (!r.ok) throw new Error("GitHub " + r.status + (r.status === 401 ? " (token ผิด/หมดอายุ)" : r.status === 403 || r.status === 404 ? " (token ไม่มีสิทธิ์เขียน repo นี้)" : "")); });
+}
+function syncNow(force) {
+  clearTimeout(syncT);
+  if (!gh.token || syncing) return Promise.resolve();
+  var doc = dataDoc(), h = hashStr(doc);
+  // status.json only changes when a day's status does; generated_at is left out of its hash
+  var st = statusJSON(), sh = hashStr(st.replace(/"generated_at": "[^"]*",/, ""));
+  var needDoc = force === true || h !== gh.hash, needSt = force === true || sh !== gh.shash;
+  if (!needDoc && !needSt) return Promise.resolve();
+  syncing = true;
+  var p = Promise.resolve();
+  if (needDoc) p = p.then(function () { return putFile(GH.path, doc, "gym: data sync " + TODAY); }).then(function () { gh.hash = h; });
+  if (needSt) p = p.then(function () { return putFile("gym/status.json", st, "gym: status " + TODAY); }).then(function () { gh.shash = sh; });
+  return p.then(function () { gh.last = Date.now(); gh.err = ""; })
     .catch(function (e) { gh.err = e.message; })
     .then(function () { syncing = false; saveGh(); paintGh(); });
 }
