@@ -288,12 +288,19 @@ function callServer(url, body, ms) {
 }
 // one AI call through the Apps Script relay: the prompts come from brain.js, the key stays on the server
 function relayAI(system, user, schema, fast, ms, url, pass) {
-  return callServer(url || aiUrl(), { pass: pass || cfg.pass, action: "ai", system: system, user: user, schema: schema, fast: fast !== false, max_tokens: fast === false ? 4000 : 1024 }, ms)
-    .then(function (d) {
-      if (!d || !d.ok) throw srvErr(d, "?");
-      if (!d.data || typeof d.data !== "object") throw srvErr({ error: "server_outdated" });
-      d.data.provider = d.provider; return d.data;
-    });
+  var once = function (f) {
+    return callServer(url || aiUrl(), { pass: pass || cfg.pass, action: "ai", system: system, user: user, schema: schema, fast: f, max_tokens: f ? 1024 : 4000 }, ms)
+      .then(function (d) {
+        if (!d || !d.ok) throw srvErr(d, "?");
+        if (!d.data || typeof d.data !== "object") throw srvErr({ error: "server_outdated" });
+        d.data.provider = d.provider; return d.data;
+      });
+  };
+  // the free fast model is sometimes overloaded (503) or rate-limited: try the other model once before giving up
+  return once(fast !== false).catch(function (e) {
+    if (fast === false || !/^(upstream_5\d\d|rate_limited|network|bad_output)$/.test(e && e.message)) throw e;
+    return once(false);
+  });
 }
 function stepCtx(avoid) {
   return { intent: S.intent || "สิ่งที่ตั้งใจไว้", detail: S.title && S.title !== S.intent ? S.title : S.detail || "", where: S.where || "", block: S.block || "",
@@ -501,6 +508,7 @@ function askClarify() {
     })
     .catch(function (e) {
       if (my !== clFlight || leaving || S.screen !== "clarify") return;
+      if (S.qa.length) { start(); return; } // already answered something: the goal is clear enough, go to the steps
       S.clMode = "proto"; S.note = errText(e && e.message, e && e.detail); nextProtoQ(); save(); show(); // carry on with the plain questions
     });
 }
