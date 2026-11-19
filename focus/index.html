@@ -452,11 +452,63 @@ function askAI() {
 
 $("no").onclick = function () { S.screen = "no"; logRound("no"); save(); show(); };
 $("yes").onclick = function () { S.screen = "intent"; S.tYes = Date.now(); save(); show(); };
-["ทำงาน", "อาบน้ำ", "ไปยิม", "นอน", "กินข้าว"].forEach(function (t) {
+var INTENT_CHIPS = ["ทำงาน", "อาบน้ำ", "ไปยิม", "นอน", "กินข้าว"];
+INTENT_CHIPS.forEach(function (t) {
   var b = document.createElement("button"); b.textContent = t;
   b.onclick = function () { $("intentIn").value = t; toClarify(); };
   $("chips").appendChild(b);
 });
+// ===== my typos get fixed before they are remembered: the AI corrects what I typed, and the log/goals.md keep the fix =====
+var FKEY = "focus.fix";
+function fixMap() { try { return JSON.parse(localStorage.getItem(FKEY)) || {}; } catch (e) { return {}; } }
+var fixQ = [], fixT = null;
+function queueFix(t) {
+  t = String(t || "").trim();
+  if (!t || !hasAI() || fixMap()[t] !== undefined || fixQ.indexOf(t) >= 0) return;
+  fixQ.push(t); clearTimeout(fixT); fixT = setTimeout(runFix, 1500);
+}
+function runFix() {
+  var list = fixQ.splice(0, 30); if (!list.length) return;
+  relayAI(FIX_SYSTEM, fixUser(list), FIX_SCHEMA, true, 30000).then(function (d) {
+    var out = Array.isArray(d.fixed) ? d.fixed : [];
+    if (out.length !== list.length) return;
+    var m = fixMap();
+    list.forEach(function (raw, i) { var f = String(out[i] || "").trim().slice(0, 120); m[raw] = f || raw; });
+    try { localStorage.setItem(FKEY, JSON.stringify(m)); } catch (e) {}
+    applyFixes(m);
+    if (fixQ.length) runFix();
+  }).catch(function () { /* AI busy: these get picked up again by the next cleanup */ });
+}
+function applyFixes(m) {
+  var F = function (t) { return t && m[t] && m[t] !== t ? m[t] : t; };
+  var l = readLog(), ch = false;
+  l.forEach(function (r) {
+    ["intent", "detail", "where", "block", "note"].forEach(function (k) { var v = F(r[k]); if (v !== r[k]) { r[k] = v; ch = true; } });
+    (r.steps || []).forEach(function (x) { var v = F(x.why); if (v !== x.why) { x.why = v; ch = true; } });
+  });
+  if (ch) { writeLog(l); if (window.queueGoals) queueGoals(); }
+  if (S) {
+    ["intent", "title", "detail", "where", "block", "lesson"].forEach(function (k) { S[k] = F(S[k]); });
+    (S.qa || []).forEach(function (x) { x.a = F(x.a); });
+    (S.ev || []).forEach(function (e) { e.why = F(e.why); });
+    S.why = (S.why || []).map(function (w) { var k = w.split(" — เพราะ "); return k.length === 2 ? k[0] + " — เพราะ " + F(k[1]) : w; });
+    save();
+    if (!S.asking && S.screen !== "clarify" && S.screen !== "intent") show(); // don't wipe what is being typed
+  }
+}
+// once a day, fix anything typed earlier that was never corrected
+function cleanupTypos() {
+  if (!hasAI()) return;
+  var last = 0; try { last = +localStorage.getItem("focus.typoClean") || 0; } catch (e) {}
+  if (Date.now() - last < 86400000) return;
+  try { localStorage.setItem("focus.typoClean", String(Date.now())); } catch (e) {}
+  var m = fixMap(), seen = {};
+  readLog().forEach(function (r) {
+    [r.intent, r.detail, r.where, r.block, r.note].concat((r.steps || []).map(function (x) { return x.why; }))
+      .forEach(function (t) { if (t && m[t] === undefined && !seen[t]) { seen[t] = 1; queueFix(t); } });
+  });
+}
+
 // intent → a few short questions, one at a time (AI asks when connected), so the goal on top gets clearer → steps
 var EXCUSES = ["ขี้เกียจ", "เหนื่อย/ง่วง", "ไม่รู้จะเริ่มตรงไหน", "งานยาก/เยอะ", "ติดมือถือ", "ไม่อยากทำ"];
 var WHERES = ["บนเตียง", "โซฟา", "เล่นมือถือ", "ที่โต๊ะแต่ไม่ได้ทำ", "ข้างนอก"];
@@ -485,6 +537,7 @@ function protoQs() {
 }
 function toClarify() {
   S.intent = $("intentIn").value.trim().slice(0, 40);
+  if (INTENT_CHIPS.indexOf(S.intent) < 0) queueFix(S.intent);
   S.title = S.intent; S.detail = ""; S.where = ""; S.block = ""; S.qa = []; S.cq = ""; S.copts = []; S.pq = 0;
   S.clMode = hasAI() ? "ai" : "proto"; S.screen = "clarify";
   if (S.clMode === "ai") askClarify(); else nextProtoQ();
@@ -517,8 +570,9 @@ function askClarify() {
       S.clMode = "proto"; S.note = errText(e && e.message, e && e.detail); nextProtoQ(); save(); show(); // carry on with the plain questions
     });
 }
-function answerClarify(a) {
+function answerClarify(a, typed) {
   a = String(a || "").trim().slice(0, 80); if (!a || S.clLoading) return;
+  if (typed) queueFix(a);
   S.qa.push({ q: S.cq, a: a, key: S.ckey || "" });
   if (S.clMode === "proto") {
     if (S.ckey === "what") { S.detail = a; S.title = S.intent && a.indexOf(S.intent) < 0 ? S.intent + ": " + a : a; }
@@ -537,8 +591,8 @@ function paintClarify() {
   $("clIn").value = ""; $("clIn").disabled = $("clSend").disabled = !!S.clLoading;
   $("clNote").hidden = !S.note; $("clNote").textContent = S.note ? S.note + " — ใช้คำถามพื้นฐานแทน" : "";
 }
-$("clSend").onclick = function () { answerClarify($("clIn").value); };
-$("clIn").onkeydown = function (e) { if (e.key === "Enter") answerClarify($("clIn").value); };
+$("clSend").onclick = function () { answerClarify($("clIn").value, true); };
+$("clIn").onkeydown = function (e) { if (e.key === "Enter") answerClarify($("clIn").value, true); };
 $("clSkip").onclick = function () { clFlight++; start(); };
 function goalText() { return S.title || S.detail || S.intent || "สิ่งที่ตั้งใจไว้"; }
 function protoSteps() { return stepsFor(S.intent).concat([["เริ่ม “" + goalText() + "” เลย — แค่เริ่มก็พอ"]]); }
@@ -571,12 +625,14 @@ function paintWhyChips() { // my usual excuses first (learned from what I answer
   $("whyChips").innerHTML = "";
   excuseGuesses(S.intent, 6).forEach(function (t) {
     var b = document.createElement("button"); b.textContent = t;
-    b.onclick = function () { $("whyIn").value = t; cantWhy(); };
+    b.onclick = function () { $("whyIn").value = t; whyChip = true; cantWhy(); };
     $("whyChips").appendChild(b);
   });
 }
+var whyChip = false;
 function cantWhy() {
   var why = $("whyIn").value.trim().slice(0, 80);
+  if (!whyChip) queueFix(why); whyChip = false;
   S.asking = false;
   if (S.mode === "ai") { S.cant.push(S.action); S.why = (S.why || []).concat(why ? [S.action + " — เพราะ " + why] : []); ev("cant", S.action, why); askAI(); return; }
   var a = protoAction(); S.cant.push(a); if (why) S.why = (S.why || []).concat([a + " — เพราะ " + why]);
@@ -595,7 +651,7 @@ $("lessonSave").onclick = function () {
   var t = $("lessonIn").value.trim().slice(0, 120); if (!t) return;
   var l = readLog(), i = l.length - 1; while (i >= 0 && l[i].id !== S.id) i--;
   if (i < 0) { $("lessonMsg").textContent = "บันทึกไม่ได้"; return; }
-  l[i].note = t; writeLog(l); S.lesson = t; save();
+  l[i].note = t; writeLog(l); S.lesson = t; save(); queueFix(t);
   $("lessonMsg").textContent = "✓ จำไว้แล้ว — รอบหน้าที่ตั้งใจ “" + (S.intent || "") + "” AI จะเห็นข้อนี้";
   if (window.queueGoals) queueGoals();
 };
@@ -903,6 +959,7 @@ if (fromNotify && history.replaceState) history.replaceState(null, "", location.
 if (fromNotify || !S) fresh(fromNotify ? "notify" : "manual");
 else { if (S.screen === "cfg" || S.screen === "stats") S.screen = "ask"; show(); if (S.mode === "ai" && S.loading && S.screen === "step") askAI(); }
 setTimeout(function () { syncGoals(); }, 3000);
+setTimeout(cleanupTypos, 6000);
 </script>
 </body>
 </html>
