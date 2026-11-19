@@ -1,6 +1,6 @@
 # My goals — progress (auto-updated)
 
-- Updated: 2026-11-19T06:08:47.854Z (timezone Asia/Bangkok, weeks run Monday–Sunday)
+- Updated: 2026-11-19T06:09:17.092Z (timezone Asia/Bangkok, weeks run Monday–Sunday)
 - Overall goal — **get a little better every day.** Compare each day with the days before it (daily table below), not only week to week.
 - Goal 1 — **Focus:** drift away from what I mean to do as little as possible; when I drift, get back to it fast.
 - Goal 2 — **Gym:** follow my split (TUE upper · WED lower · FRI push · SAT pull · SUN cardio) and keep adding weight (progressive overload).
@@ -11,9 +11,9 @@
 
 | Metric | This week | Last week | 4-week avg | Better if |
 |---|---|---|---|---|
-| Focus check-ins | 5 | 0 | 5 | – |
-| Drifted (share of check-ins) | 80% | – | 80% | lower |
-| Got back on task after drifting | 75% | – | 75% | higher |
+| Focus check-ins | 6 | 0 | 6 | – |
+| Drifted (share of check-ins) | 83% | – | 83% | lower |
+| Got back on task after drifting | 80% | – | 80% | higher |
 | Minutes to get back (median) | 1.3 | – | 1.3 | lower |
 | Gave up midway | 1 | 0 | 1 | lower |
 | Gym days trained (of 4) | 0/4 | 0/4 | 0 | higher |
@@ -39,7 +39,7 @@
 | 2026-11-16 Mon | 0 | – | – | – | – |
 | 2026-11-17 Tue | 0 | – | – | – | – |
 | 2026-11-18 Wed | 0 | – | – | – | – |
-| 2026-11-19 Thu | 5 | 4 (80%) | 3/4 | 1.3 | – |
+| 2026-11-19 Thu | 6 | 5 (83%) | 4/5 | 1.3 | – |
 
 ## Focus by week (last 8 weeks)
 
@@ -52,11 +52,11 @@
 | 2026-10-26 | 0 | – | – | – | 0 |
 | 2026-11-02 | 0 | – | – | – | 0 |
 | 2026-11-09 | 0 | – | – | – | 0 |
-| 2026-11-16 | 5 | 4 (80%) | 3 (75%) | 1.3 | 1 |
+| 2026-11-16 | 6 | 5 (83%) | 4 (80%) | 1.3 | 1 |
 
 ## When I drift (last 4 weeks, by hour)
 
-12:00 → 4
+12:00 → 4 · 13:00 → 1
 
 ## Lessons by goal — what the AI remembers for next time
 
@@ -73,11 +73,14 @@ Per goal (what I meant to do): rounds, how often I got started, the steps that l
 - Worked: พูดในใจว่า “แค่ 10 วินาทีพอ” (×1) · หยิบของชิ้นแรกที่ต้องใช้ (×1) · ทำส่วนที่เล็กที่สุดของ “ใส่คอนแท็คเลนส์” ก่อน (×1)
 - Couldn't do: หายใจลึกๆ 1 ครั้ง · วางมือถือลง หรือคว่ำไว้ · ปิดแอปที่เปิดอยู่ · ลุกขึ้นยืน 1 ครั้ง · มองไปทางที่จะทำ “ใส่คอนแท็คเลนส์” 5 วินาที
 
+### ไปยิม — started 1/1
+- Worked: วางมือถือลงก่อน (×1) · ใส่แค่รองเท้าก่อน (×1) · หยิบแค่กุญแจ (×1) · เปิดประตู (×1)
+
 
 ## Raw focus log (all check-ins, oldest first)
 
 Fields: day, time, from (notify = opened from a reminder, manual = opened myself), drifted, intent (what I meant to do), outcome (no = not drifting, started = got back on task, abandoned = gave up midway), minutes (from answering yes to getting started), steps (✓ done, ✗ couldn't do, with the reason I gave), note (my lesson for next time).
 
 ```json
-[{"day":"2026-11-19","time":"12:42","from":"manual","drifted":true,"intent":"","outcome":"abandoned","minutes":0.1,"steps":[]},{"day":"2026-11-19","time":"12:49","from":"manual","drifted":true,"intent":"ใส่คอนเท้คเลยส์","outcome":"started","minutes":1.3,"steps":["✗ วางมือถือลง หรือคว่ำไว้","✗ ปิดแอปที่เปิดอยู่","✗ ลุกขึ้นยืน 1 ครั้ง","✗ หายใจลึกๆ 1 ครั้ง","✗ วางมือถือลง หรือคว่ำไว้","✗ ปิดแอปที่เปิดอยู่","✗ ลุกขึ้นยืน 1 ครั้ง","✗ หายใจลึกๆ 1 ครั้ง","✗ วางมือถือลง หรือคว่ำไว้","✗ ปิดแอปที่เปิดอยู่","✗ ลุกขึ้นยืน 1 ครั้ง","✗ หายใจลึกๆ 1 ครั้ง","✗ วางมือถือลง หรือคว่ำไว้","✗ ปิดแอปที่เปิดอยู่","✓ ลุกขึ้นยืน 1 ครั้ง","✗ ขยับไปที่ที่จะทำ “ใส่คอนเท้คเลยส์”","✗ หยิบของชิ้นแรกที่ต้องใช้","✗ ลุกขึ้นยืน 1 ครั้ง","✓ หายใจลึกๆ 1 ครั้ง","✗ เริ่ม “ใส่คอนเท้คเลยส์” แค่ 2 นาที","✗ ทำส่วนที่เล็กที่สุดของ “ใส่คอนเท้คเลยส์” ก่อน","✗ ลุกขึ้นยืน 1 ครั้ง","✗ หายใจลึกๆ 1 ครั้ง","✗ เริ่ม “ใส่คอนเท้คเลยส์” แค่ 2 นาที","✓ ทำส่วนที่เล็กที่สุดของ “ใส่คอนเท้คเลยส์” ก่อน"]},{"day":"2026-11-19","time":"12:51","from":"manual","drifted":true,"intent":"ว่ายน้ำ","outcome":"started","minutes":0.3,"steps":["✓ วางมือถือลง หรือคว่ำไว้","✓ ขยับไปที่ที่จะทำ “ว่ายน้ำ”","✓ เริ่ม “ว่ายน้ำ” แค่ 2 นาที"]},{"day":"2026-11-19","time":"12:51","from":"manual","drifted":true,"intent":"ใส่คอนแท็คเลนส์","outcome":"started","minutes":14.5,"steps":["✗ วางมือถือลง หรือคว่ำไว้","✗ ปิดแอปที่เปิดอยู่","✗ ลุกขึ้นยืน 1 ครั้ง","✗ หายใจลึกๆ 1 ครั้ง","✗ วางมือถือลง หรือคว่ำไว้","✗ ปิดแอปที่เปิดอยู่","✗ ลุกขึ้นยืน 1 ครั้ง","✗ มองไปทางที่จะทำ “ใส่คอนแท็คเลนส์” 5 วินาที","✓ พูดในใจว่า “แค่ 10 วินาทีพอ”","✓ หยิบของชิ้นแรกที่ต้องใช้","✓ ทำส่วนที่เล็กที่สุดของ “ใส่คอนแท็คเลนส์” ก่อน"]},{"day":"2026-11-19","time":"13:06","from":"manual","drifted":false,"outcome":"no","steps":[]}]
+[{"day":"2026-11-19","time":"12:42","from":"manual","drifted":true,"intent":"","outcome":"abandoned","minutes":0.1,"steps":[]},{"day":"2026-11-19","time":"12:49","from":"manual","drifted":true,"intent":"ใส่คอนเท้คเลยส์","outcome":"started","minutes":1.3,"steps":["✗ วางมือถือลง หรือคว่ำไว้","✗ ปิดแอปที่เปิดอยู่","✗ ลุกขึ้นยืน 1 ครั้ง","✗ หายใจลึกๆ 1 ครั้ง","✗ วางมือถือลง หรือคว่ำไว้","✗ ปิดแอปที่เปิดอยู่","✗ ลุกขึ้นยืน 1 ครั้ง","✗ หายใจลึกๆ 1 ครั้ง","✗ วางมือถือลง หรือคว่ำไว้","✗ ปิดแอปที่เปิดอยู่","✗ ลุกขึ้นยืน 1 ครั้ง","✗ หายใจลึกๆ 1 ครั้ง","✗ วางมือถือลง หรือคว่ำไว้","✗ ปิดแอปที่เปิดอยู่","✓ ลุกขึ้นยืน 1 ครั้ง","✗ ขยับไปที่ที่จะทำ “ใส่คอนเท้คเลยส์”","✗ หยิบของชิ้นแรกที่ต้องใช้","✗ ลุกขึ้นยืน 1 ครั้ง","✓ หายใจลึกๆ 1 ครั้ง","✗ เริ่ม “ใส่คอนเท้คเลยส์” แค่ 2 นาที","✗ ทำส่วนที่เล็กที่สุดของ “ใส่คอนเท้คเลยส์” ก่อน","✗ ลุกขึ้นยืน 1 ครั้ง","✗ หายใจลึกๆ 1 ครั้ง","✗ เริ่ม “ใส่คอนเท้คเลยส์” แค่ 2 นาที","✓ ทำส่วนที่เล็กที่สุดของ “ใส่คอนเท้คเลยส์” ก่อน"]},{"day":"2026-11-19","time":"12:51","from":"manual","drifted":true,"intent":"ว่ายน้ำ","outcome":"started","minutes":0.3,"steps":["✓ วางมือถือลง หรือคว่ำไว้","✓ ขยับไปที่ที่จะทำ “ว่ายน้ำ”","✓ เริ่ม “ว่ายน้ำ” แค่ 2 นาที"]},{"day":"2026-11-19","time":"12:51","from":"manual","drifted":true,"intent":"ใส่คอนแท็คเลนส์","outcome":"started","minutes":14.5,"steps":["✗ วางมือถือลง หรือคว่ำไว้","✗ ปิดแอปที่เปิดอยู่","✗ ลุกขึ้นยืน 1 ครั้ง","✗ หายใจลึกๆ 1 ครั้ง","✗ วางมือถือลง หรือคว่ำไว้","✗ ปิดแอปที่เปิดอยู่","✗ ลุกขึ้นยืน 1 ครั้ง","✗ มองไปทางที่จะทำ “ใส่คอนแท็คเลนส์” 5 วินาที","✓ พูดในใจว่า “แค่ 10 วินาทีพอ”","✓ หยิบของชิ้นแรกที่ต้องใช้","✓ ทำส่วนที่เล็กที่สุดของ “ใส่คอนแท็คเลนส์” ก่อน"]},{"day":"2026-11-19","time":"13:06","from":"manual","drifted":false,"outcome":"no","steps":[]},{"day":"2026-11-19","time":"13:08","from":"manual","drifted":true,"intent":"ไปยิม","outcome":"started","minutes":1,"steps":["✓ วางมือถือลงก่อน","✓ ใส่แค่รองเท้าก่อน","✓ หยิบแค่กุญแจ","✓ เปิดประตู"]}]
 ```
