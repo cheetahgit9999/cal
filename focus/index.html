@@ -56,6 +56,12 @@ input:focus{outline:none;border-color:var(--acc)}
 .proto.ai{color:#a5d6ff;border-color:#1f6feb66}
 .note{text-align:center;color:#d29922;font-size:13px;margin:0}
 .step.wait .a{color:var(--dim)}
+.mem{text-align:center;color:var(--dim);font-size:13px;margin:0}
+.why{display:flex;flex-direction:column;gap:10px}
+.why .q{text-align:center;font-size:17px;font-weight:650}
+.why .q span{display:block;font-size:13px;font-weight:400;color:var(--dim)}
+#stepBtns{display:flex;flex-direction:column;gap:12px}
+#stepBtns[hidden],.why[hidden]{display:none}
 button:disabled{opacity:.45}
 .cfgl{position:fixed;right:max(14px,env(safe-area-inset-right));bottom:max(14px,env(safe-area-inset-bottom));background:none;border:0;color:var(--dim);font-size:20px;padding:8px}
 #s-cfg{justify-content:flex-start;padding-top:10px}
@@ -109,8 +115,17 @@ button:disabled{opacity:.45}
     <div class="intent" id="intentLbl"></div>
     <div class="step" id="stepBox"><div class="n" id="stepN"></div><div class="a" id="stepA"></div></div>
     <p class="note" id="stepNote" hidden></p>
-    <button class="pri" id="did">✓ ทำแล้ว</button>
-    <button class="ghost" id="cant">ขั้นนี้ทำไม่ได้</button>
+    <p class="mem" id="memLbl" hidden></p>
+    <div id="stepBtns">
+      <button class="pri" id="did">✓ ทำแล้ว</button>
+      <button class="ghost" id="cant">ขั้นนี้ทำไม่ได้</button>
+    </div>
+    <div class="why" id="whyBox" hidden>
+      <div class="q">อะไรขวางไว้? <span>(ไม่ใส่ก็ได้ · AI จะจำไว้รอบหน้า)</span></div>
+      <div class="chips" id="whyChips"></div>
+      <input id="whyIn" maxlength="80" placeholder="พิมพ์เองก็ได้" autocomplete="off" enterkeyhint="go">
+      <button class="pri" id="whyGo">ต่อ</button>
+    </div>
   </section>
 
   <!-- stats -->
@@ -141,6 +156,12 @@ button:disabled{opacity:.45}
   <!-- 4. started -->
   <section class="screen" id="s-end">
     <div class="done"><div class="ic">✓</div><h1>เริ่มแล้ว</h1><p class="sub" id="endSub"></p></div>
+    <div class="why">
+      <div class="q">📝 บันทึกให้ AI รอบหน้า <span>(ไม่ใส่ก็ได้)</span></div>
+      <input id="lessonIn" maxlength="120" placeholder="เช่น ขั้นวางมือถือได้ผลที่สุด" autocomplete="off" enterkeyhint="done">
+      <button id="lessonSave">บันทึก</button>
+      <p class="mem" id="lessonMsg"></p>
+    </div>
     <button class="ghost small" id="again2">เริ่มรอบใหม่</button>
   </section>
 </div>
@@ -192,7 +213,16 @@ function genericSteps(t) {
     ["เริ่ม " + w + " แค่ 2 นาที", "ทำส่วนที่เล็กที่สุดของ " + w + " ก่อน"]
   ];
 }
-var FALLBACK = ["ลุกขึ้นยืน 1 ครั้ง", "หายใจลึกๆ 1 ครั้ง"]; // when every alternative for a step was "can't"
+// when every alternative for a step was "can't": smaller and smaller, never the same one twice
+function easierLadder(t) {
+  var w = t ? "“" + t + "”" : "สิ่งที่ตั้งใจไว้";
+  return ["ลุกขึ้นยืน 1 ครั้ง", "นั่งตัวตรง แล้วหายใจลึกๆ 1 ครั้ง", "มองไปทางที่จะทำ " + w + " 5 วินาที",
+    "แตะของชิ้นแรกที่ต้องใช้ แค่แตะพอ", "พูดในใจว่า “แค่ 10 วินาทีพอ”", "หลับตา หายใจช้าๆ 3 ครั้ง"];
+}
+var REST = "ไม่เป็นไร — นั่งพัก 30 วินาที แล้วกด ✓ ไปต่อ";
+function sameAct(a, b) { var n = function (x) { return String(x || "").toLowerCase().replace(/[\s.,!?“”"'()\-–—]/g, ""); }; var x = n(a), y = n(b); return x === y || (x.length >= 4 && y.length >= 4 && (x.indexOf(y) >= 0 || y.indexOf(x) >= 0)); } // same, or one is the other plus a bit
+function usedActs() { return (S.ev || []).map(function (e) { return e.a; }).concat(S.done || [], S.cant || []); }
+function isUsed(a) { return usedActs().some(function (u) { return sameAct(u, a); }); }
 function stepsFor(t) {
   var s = (t || "").toLowerCase();
   for (var i = 0; i < TEMPLATES.length; i++) if (TEMPLATES[i].keys.some(function (k) { return s.indexOf(k) >= 0; })) return TEMPLATES[i].steps;
@@ -226,7 +256,7 @@ var LKEY = "focus.log", OKEY = "focus.open";
 function readLog() { try { return JSON.parse(localStorage.getItem(LKEY)) || []; } catch (e) { return []; } }
 function writeLog(l) { try { localStorage.setItem(LKEY, JSON.stringify(l.slice(-500))); } catch (e) {} }
 function rowOf(R, out) {
-  var r = { at: R.at, src: R.src || "manual", ans: out === "no" ? "no" : "yes", out: out };
+  var r = { id: R.id, at: R.at, src: R.src || "manual", ans: out === "no" ? "no" : "yes", out: out };
   if (out !== "no") { r.intent = R.intent || ""; r.mode = R.mode; r.steps = R.ev || []; r.sec = Math.round((Date.now() - (R.tYes || R.at)) / 1000); }
   return r;
 }
@@ -237,7 +267,27 @@ function logRound(out) {
   if (window.queueGoals) queueGoals();
   try { localStorage.removeItem(OKEY); } catch (e) {}
 }
-function ev(r, a) { S.ev = S.ev || []; S.ev.push({ a: a, r: r, t: Math.round((Date.now() - (S.tYes || S.at)) / 1000) }); }
+function cantStreak() { var n = 0, e = S.ev || []; for (var i = e.length - 1; i >= 0 && e[i].r === "cant"; i--) n++; return n; }
+function ev(r, a, why) { S.ev = S.ev || []; var e = { a: a, r: r, t: Math.round((Date.now() - (S.tYes || S.at)) / 1000) }; if (why) e.why = why; S.ev.push(e); }
+
+// ===== learning: what happened before with the same goal, sent to the AI so the next round starts smarter =====
+function normIntent(t) { return String(t || "").trim().toLowerCase().replace(/\s+/g, " "); }
+function memoryFor(intent, skipId) {
+  var k = normIntent(intent); if (!k) return null;
+  var rows = readLog().filter(function (r) { return r.ans === "yes" && normIntent(r.intent) === k && (!skipId || r.id !== skipId); }).slice(-30);
+  if (!rows.length) return null;
+  var worked = {}, failed = [], notes = [];
+  rows.forEach(function (r) {
+    (r.steps || []).forEach(function (s) {
+      if (s.r === "done" && r.out === "started") worked[s.a] = (worked[s.a] || 0) + 1;
+      if (s.r === "cant") failed.push(s.why ? s.a + " — เพราะ " + s.why : s.a);
+    });
+    if (r.note) notes.push(r.note);
+  });
+  var uniq = function (a) { return a.filter(function (x, i) { return a.lastIndexOf(x) === i; }); };
+  return { rounds: rows.length, started: rows.filter(function (r) { return r.out === "started"; }).length,
+    worked: topK(worked, 6).map(function (a) { return a + " (×" + worked[a] + ")"; }), failed: uniq(failed).slice(-8), notes: uniq(notes).slice(-5) };
+}
 
 var $ = function (id) { return document.getElementById(id); };
 function show() {
@@ -250,6 +300,7 @@ function show() {
   if (S.screen === "stats") paintStats();
   if (S.screen === "intent") { $("intentIn").value = S.intent || ""; setTimeout(function () { $("intentIn").focus(); }, 50); }
   if (S.screen === "step") paintStep();
+  if (S.screen === "end") { $("lessonIn").value = S.lesson || ""; $("lessonMsg").textContent = S.lesson ? "✓ จำไว้แล้ว" : ""; }
   if (S.screen === "end") $("endSub").textContent = S.intent ? "“" + S.intent + "” — ทำต่อไปได้เลย" : "ทำต่อไปได้เลย";
   if (S.screen === "cfg") { $("cfgUrl").value = cfg.url || ""; $("cfgPass").value = cfg.pass || ""; $("cfgMsg").textContent = hasAI() ? "เชื่อมไว้แล้ว" : "ยังไม่ได้เชื่อม — ตอนนี้ใช้ขั้นตอนตัวอย่าง"; }
 }
@@ -260,9 +311,18 @@ function paintStep() {
   $("stepBox").classList.toggle("wait", wait);
   $("stepA").textContent = wait ? "กำลังคิด…" : S.mode === "ai" ? S.action : protoAction();
   $("did").disabled = $("cant").disabled = wait;
+  $("cant").hidden = !wait && $("stepA").textContent === REST;
   $("stepNote").hidden = !S.note; $("stepNote").textContent = S.note || "";
+  var m = S.mode === "ai" ? memoryFor(S.intent, S.id) : null;
+  $("memLbl").hidden = !m; if (m) $("memLbl").textContent = "🧠 AI ใช้บทเรียนจาก " + m.rounds + " รอบก่อนของ “" + S.intent + "”";
+  $("whyBox").hidden = !S.asking; $("stepBtns").hidden = !!S.asking;
+  if (S.asking) { $("whyIn").value = ""; setTimeout(function () { $("whyIn").focus(); }, 50); }
 }
-function protoAction() { var opts = stepsFor(S.intent)[S.step].concat(FALLBACK); return opts[S.alt % opts.length]; }
+function protoAction() {
+  var opts = stepsFor(S.intent)[S.step].concat(easierLadder(S.intent));
+  for (var i = 0; i < opts.length; i++) if (!isUsed(opts[i])) return opts[i];
+  return REST; // everything was tried: no loop, just rest and go on
+}
 
 // ===== ask the server for the next single action =====
 var inflight = 0, leaving = false;
@@ -277,13 +337,17 @@ function askAI() {
   fetch(cfg.url, {
     method: "POST",
     headers: { "Content-Type": "text/plain;charset=utf-8" }, // a "simple" request: no CORS preflight
-    body: JSON.stringify({ pass: cfg.pass, intent: S.intent, done: S.done, cant: S.cant }),
+    body: JSON.stringify({ pass: cfg.pass, intent: S.intent, done: S.done, cant: S.cant, why: S.why || [], streak: cantStreak(), memory: memoryFor(S.intent, S.id) }),
     signal: ctrl ? ctrl.signal : undefined
   })
     .then(function (r) { return r.json(); })
     .then(function (d) {
       if (my !== inflight) return;
       if (!d || !d.ok || !d.action) throw new Error((d && d.error) || "no_action");
+      if (isUsed(d.action)) { // the AI repeated itself: never show the same step twice, take the next smaller fallback instead
+        var alt = easierLadder(S.intent).filter(function (a) { return !isUsed(a); })[0];
+        d.action = alt || REST; d.started = false;
+      }
       S.action = d.action; S.started = !!d.started; S.loading = false; S.note = ""; if (d.provider) S.provider = d.provider;
       save(); show();
     })
@@ -308,7 +372,7 @@ $("yes").onclick = function () { S.screen = "intent"; S.tYes = Date.now(); save(
 });
 function start() {
   S.intent = $("intentIn").value.trim().slice(0, 40);
-  S.step = 0; S.alt = 0; S.done = []; S.cant = []; S.action = ""; S.started = false; S.note = "";
+  S.step = 0; S.alt = 0; S.done = []; S.cant = []; S.why = []; S.asking = false; S.action = ""; S.started = false; S.note = "";
   S.screen = "step"; S.mode = hasAI() ? "ai" : "proto";
   save(); show();
   if (S.mode === "ai") askAI();
@@ -326,9 +390,27 @@ $("did").onclick = function () {
   else { S.step++; S.alt = 0; }
   S.note = ""; save(); show();
 };
-$("cant").onclick = function () {
-  if (S.mode === "ai") { S.cant.push(S.action); ev("cant", S.action); askAI(); return; }
-  ev("cant", protoAction()); S.alt++; save(); paintStep();
+$("cant").onclick = function () { S.asking = true; save(); paintStep(); };
+["ขี้เกียจ", "ยากไป", "ไม่มีของ/ไม่สะดวก", "ไม่ใช่เวลานี้", "ไม่อยากทำ"].forEach(function (t) {
+  var b = document.createElement("button"); b.textContent = t;
+  b.onclick = function () { $("whyIn").value = t; cantWhy(); };
+  $("whyChips").appendChild(b);
+});
+function cantWhy() {
+  var why = $("whyIn").value.trim().slice(0, 80);
+  S.asking = false;
+  if (S.mode === "ai") { S.cant.push(S.action); S.why = (S.why || []).concat(why ? [S.action + " — เพราะ " + why] : []); ev("cant", S.action, why); askAI(); return; }
+  ev("cant", protoAction(), why); S.alt++; save(); paintStep();
+}
+$("whyGo").onclick = cantWhy;
+$("whyIn").onkeydown = function (e) { if (e.key === "Enter") cantWhy(); };
+$("lessonSave").onclick = function () {
+  var t = $("lessonIn").value.trim().slice(0, 120); if (!t) return;
+  var l = readLog(), i = l.length - 1; while (i >= 0 && l[i].id !== S.id) i--;
+  if (i < 0) { $("lessonMsg").textContent = "บันทึกไม่ได้"; return; }
+  l[i].note = t; writeLog(l); S.lesson = t; save();
+  $("lessonMsg").textContent = "✓ จำไว้แล้ว — รอบหน้าที่ตั้งใจ “" + (S.intent || "") + "” AI จะเห็นข้อนี้";
+  if (window.queueGoals) queueGoals();
 };
 $("again1").onclick = function () { fresh(); };
 $("again2").onclick = function () { fresh(); };
@@ -364,10 +446,11 @@ function paintStats() {
   paintGoals();
 }
 // compact rows for the AI (no ids, short keys kept readable)
+function stepStr(s) { return (s.r === "cant" ? "✗ " : "✓ ") + s.a + (s.why ? " (เพราะ " + s.why + ")" : ""); }
 function rowsForAI(days) {
   return lastDays(days).map(function (r) {
     return { day: dstr(r.at), time: hhmm(r.at), from: r.src, drifted: r.ans === "yes", intent: r.intent, outcome: r.out, minutes: r.sec != null ? Math.round(r.sec / 6) / 10 : undefined,
-      steps: (r.steps || []).map(function (s) { return (s.r === "cant" ? "✗ " : "✓ ") + s.a; }) };
+      steps: (r.steps || []).map(stepStr), note: r.note || undefined };
   });
 }
 function analysisText() {
@@ -507,14 +590,30 @@ function goalsDoc() {
   var hs = Object.keys(hours).sort(function (a, b) { return a - b; });
   o.push(hs.length ? hs.map(function (h) { return h + ":00 → " + hours[h]; }).join(" · ") : "No drift logged yet.");
   o.push("");
+  o.push("## Lessons by goal — what the AI remembers for next time");
+  o.push("");
+  o.push("Per goal (what I meant to do): rounds, how often I got started, the steps that led to starting, the steps I couldn't do and why, and my own notes. The step-by-step AI gets this same list when I pick that goal again.");
+  o.push("");
+  var byI = {}; all.forEach(function (r) { var k = normIntent(r.intent); if (r.ans === "yes" && k) byI[k] = r.intent.trim(); });
+  var ks = Object.keys(byI);
+  if (!ks.length) o.push("No goals logged yet.");
+  ks.forEach(function (k) {
+    var m = memoryFor(byI[k]); if (!m) return;
+    o.push("### " + byI[k] + " — started " + m.started + "/" + m.rounds);
+    if (m.worked.length) o.push("- Worked: " + m.worked.join(" · "));
+    if (m.failed.length) o.push("- Couldn't do: " + m.failed.join(" · "));
+    if (m.notes.length) o.push("- My notes: " + m.notes.join(" · "));
+    o.push("");
+  });
+  o.push("");
   o.push("## Raw focus log (all check-ins, oldest first)");
   o.push("");
-  o.push("Fields: day, time, from (notify = opened from a reminder, manual = opened myself), drifted, intent (what I meant to do), outcome (no = not drifting, started = got back on task, abandoned = gave up midway), minutes (from answering yes to getting started), steps (✓ done, ✗ couldn't do).");
+  o.push("Fields: day, time, from (notify = opened from a reminder, manual = opened myself), drifted, intent (what I meant to do), outcome (no = not drifting, started = got back on task, abandoned = gave up midway), minutes (from answering yes to getting started), steps (✓ done, ✗ couldn't do, with the reason I gave), note (my lesson for next time).");
   o.push("");
   o.push("```json");
   o.push(JSON.stringify(all.map(function (r) {
     return { day: dstr(r.at), time: hhmm(r.at), from: r.src, drifted: r.ans === "yes", intent: r.intent, outcome: r.out,
-      minutes: r.sec != null ? Math.round(r.sec / 6) / 10 : undefined, steps: (r.steps || []).map(function (s) { return (s.r === "cant" ? "✗ " : "✓ ") + s.a; }) };
+      minutes: r.sec != null ? Math.round(r.sec / 6) / 10 : undefined, steps: (r.steps || []).map(stepStr), note: r.note || undefined };
   })));
   o.push("```");
   o.push("");
