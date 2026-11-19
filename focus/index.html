@@ -64,6 +64,16 @@ button:disabled{opacity:.45}
 #s-cfg input{font-size:16px}
 #s-cfg .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 #s-cfg .row button{padding:14px;font-size:16px}
+.stl{position:fixed;left:max(14px,env(safe-area-inset-left));bottom:max(14px,env(safe-area-inset-bottom));background:none;border:0;color:var(--dim);font-size:20px;padding:8px}
+#s-stats{justify-content:flex-start;padding-top:10px;gap:14px}
+#s-stats h1{font-size:22px}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tiles div{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 8px;text-align:center;font-size:13px;color:var(--mut)}
+.tiles b{display:block;font-size:24px;color:var(--txt);font-variant-numeric:tabular-nums}
+.facts{margin:0;padding-left:20px;font-size:15px;color:var(--txt)}
+.facts li{margin:3px 0}
+.ai{background:#0d1b2e;border:1px solid #1f6feb66;border-radius:14px;padding:12px 14px;font-size:15px;white-space:pre-wrap}
+.ai:empty{display:none}
 #cfgMsg{text-align:center;font-size:14px;color:var(--mut);min-height:20px;margin:0}
 </style>
 </head>
@@ -103,6 +113,18 @@ button:disabled{opacity:.45}
     <button class="ghost" id="cant">ขั้นนี้ทำไม่ได้</button>
   </section>
 
+  <!-- stats -->
+  <section class="screen" id="s-stats">
+    <h1>📊 7 วันที่ผ่านมา</h1>
+    <div class="tiles" id="stTiles"></div>
+    <ul class="facts" id="stFacts"></ul>
+    <div class="ai" id="stAI"></div>
+    <button class="pri" id="stAsk">🤖 ให้ AI วิเคราะห์</button>
+    <button id="stCopy">📋 Copy ข้อมูลไปให้ AI ตัวอื่น</button>
+    <p class="sub" style="font-size:13px">ข้อมูลเก็บในเครื่องนี้เท่านั้น ไม่ได้อัปขึ้นเว็บ · ตอนกดวิเคราะห์จะส่งไป Apps Script ของคุณและ Claude</p>
+    <button class="ghost" id="stBack">← กลับ</button>
+  </section>
+
   <!-- settings -->
   <section class="screen" id="s-cfg">
     <h1>⚙ เชื่อม AI</h1>
@@ -122,6 +144,7 @@ button:disabled{opacity:.45}
   </section>
 </div>
 <button class="cfgl" id="cfgOpen" aria-label="settings">⚙</button>
+<button class="stl" id="stOpen" aria-label="stats">📊</button>
 
 <script>
 // ===== example step templates (prototype — not AI) =====
@@ -185,17 +208,44 @@ var MAX_STEPS = 8;
 var KEY = "focus.round";
 var S = null;
 function load() { try { return JSON.parse(sessionStorage.getItem(KEY)); } catch (e) { return null; } }
-function save() { try { S ? sessionStorage.setItem(KEY, JSON.stringify(S)) : sessionStorage.removeItem(KEY); } catch (e) {} }
-function fresh() { S = { screen: "ask", intent: "", mode: "proto", step: 0, alt: 0, done: [], cant: [], action: "", started: false, loading: false, note: "", at: Date.now() }; save(); show(); }
+function save() {
+  try { S ? sessionStorage.setItem(KEY, JSON.stringify(S)) : sessionStorage.removeItem(KEY); } catch (e) {}
+  // also remember an unfinished round across tabs, so one left in a closed tab is logged as abandoned next time
+  try { if (S && !S.logged && (S.screen === "intent" || S.screen === "step")) localStorage.setItem(OKEY, JSON.stringify(S)); } catch (e) {}
+}
+function fresh(src) {
+  if (S && !S.logged && (S.screen === "intent" || S.screen === "step")) logRound("abandoned"); // left a round midway
+  S = { id: Date.now().toString(36), src: src || "manual", screen: "ask", intent: "", mode: "proto", step: 0, alt: 0, done: [], cant: [], ev: [], action: "", started: false, loading: false, note: "", at: Date.now() };
+  save(); show();
+}
+
+// ===== focus log: one row per round, kept on this device (localStorage) for the 📊 view and AI analysis =====
+// row: { at, src: manual|notify, ans: no|yes, intent, out: no|started|abandoned, sec (yes → end), mode, steps: [{a, r: done|cant, t}] }
+var LKEY = "focus.log", OKEY = "focus.open";
+function readLog() { try { return JSON.parse(localStorage.getItem(LKEY)) || []; } catch (e) { return []; } }
+function writeLog(l) { try { localStorage.setItem(LKEY, JSON.stringify(l.slice(-500))); } catch (e) {} }
+function rowOf(R, out) {
+  var r = { at: R.at, src: R.src || "manual", ans: out === "no" ? "no" : "yes", out: out };
+  if (out !== "no") { r.intent = R.intent || ""; r.mode = R.mode; r.steps = R.ev || []; r.sec = Math.round((Date.now() - (R.tYes || R.at)) / 1000); }
+  return r;
+}
+function logRound(out) {
+  if (!S || S.logged) return;
+  var l = readLog(); l.push(rowOf(S, out)); writeLog(l);
+  S.logged = true;
+  try { localStorage.removeItem(OKEY); } catch (e) {}
+}
+function ev(r, a) { S.ev = S.ev || []; S.ev.push({ a: a, r: r, t: Math.round((Date.now() - (S.tYes || S.at)) / 1000) }); }
 
 var $ = function (id) { return document.getElementById(id); };
 function show() {
-  ["ask", "no", "intent", "step", "end", "cfg"].forEach(function (n) { $("s-" + n).classList.toggle("on", S.screen === n); });
+  ["ask", "no", "intent", "step", "end", "cfg", "stats"].forEach(function (n) { $("s-" + n).classList.toggle("on", S.screen === n); });
   var p = $("proto");
   p.hidden = !(S.screen === "step" || S.screen === "end");
   p.className = "proto" + (S.mode === "ai" ? " ai" : "");
   p.textContent = S.mode === "ai" ? "AI ช่วยคิด · Claude" : "ต้นแบบ · ขั้นตอนตัวอย่าง ยังไม่ได้ใช้ AI";
-  $("cfgOpen").hidden = S.screen !== "ask";
+  $("cfgOpen").hidden = $("stOpen").hidden = S.screen !== "ask";
+  if (S.screen === "stats") paintStats();
   if (S.screen === "intent") { $("intentIn").value = S.intent || ""; setTimeout(function () { $("intentIn").focus(); }, 50); }
   if (S.screen === "step") paintStep();
   if (S.screen === "end") $("endSub").textContent = S.intent ? "“" + S.intent + "” — ทำต่อไปได้เลย" : "ทำต่อไปได้เลย";
@@ -244,8 +294,8 @@ function askAI() {
     .then(function () { clearTimeout(timer); });
 }
 
-$("no").onclick = function () { S.screen = "no"; save(); show(); };
-$("yes").onclick = function () { S.screen = "intent"; save(); show(); };
+$("no").onclick = function () { S.screen = "no"; logRound("no"); save(); show(); };
+$("yes").onclick = function () { S.screen = "intent"; S.tYes = Date.now(); save(); show(); };
 ["ทำงาน", "อาบน้ำ", "ไปยิม", "นอน", "กินข้าว"].forEach(function (t) {
   var b = document.createElement("button"); b.textContent = t;
   b.onclick = function () { $("intentIn").value = t; start(); };
@@ -262,21 +312,97 @@ $("go").onclick = start;
 $("intentIn").onkeydown = function (e) { if (e.key === "Enter") start(); };
 $("did").onclick = function () {
   if (S.mode === "ai") {
-    S.done.push(S.action);
-    if (S.started || S.done.length >= MAX_STEPS) { S.screen = "end"; save(); show(); return; }
+    S.done.push(S.action); ev("done", S.action);
+    if (S.started || S.done.length >= MAX_STEPS) { S.screen = "end"; logRound("started"); save(); show(); return; }
     askAI(); return;
   }
-  S.done.push(protoAction());
-  if (S.step + 1 >= stepsFor(S.intent).length) { S.screen = "end"; }
+  S.done.push(protoAction()); ev("done", protoAction());
+  if (S.step + 1 >= stepsFor(S.intent).length) { S.screen = "end"; logRound("started"); }
   else { S.step++; S.alt = 0; }
   S.note = ""; save(); show();
 };
 $("cant").onclick = function () {
-  if (S.mode === "ai") { S.cant.push(S.action); askAI(); return; }
-  S.alt++; save(); paintStep();
+  if (S.mode === "ai") { S.cant.push(S.action); ev("cant", S.action); askAI(); return; }
+  ev("cant", protoAction()); S.alt++; save(); paintStep();
 };
-$("again1").onclick = fresh;
-$("again2").onclick = fresh;
+$("again1").onclick = function () { fresh(); };
+$("again2").onclick = function () { fresh(); };
+
+// ===== 📊 stats (last 7 days) + AI analysis =====
+function hhmm(t) { return new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Bangkok", hour: "2-digit", minute: "2-digit" }).format(new Date(t)); }
+function dstr(t) { return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bangkok", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(t)); }
+function hourOf(t) { return +new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Bangkok", hour: "2-digit", hour12: false }).format(new Date(t)) % 24; }
+function lastDays(n) { var since = Date.now() - n * 86400000; return readLog().filter(function (r) { return r.at >= since; }); }
+function median(a) { if (!a.length) return null; a = a.slice().sort(function (x, y) { return x - y; }); return a[Math.floor(a.length / 2)]; }
+function topK(obj, k) { return Object.keys(obj).sort(function (a, b) { return obj[b] - obj[a]; }).slice(0, k).filter(function (x) { return obj[x] > 0; }); }
+function stats(rows) {
+  var yes = rows.filter(function (r) { return r.ans === "yes"; }), started = yes.filter(function (r) { return r.out === "started"; });
+  var hours = {}, intents = {};
+  yes.forEach(function (r) { var h = hourOf(r.at); hours[h] = (hours[h] || 0) + 1; var i = (r.intent || "").trim(); if (i) intents[i] = (intents[i] || 0) + 1; });
+  return { asked: rows.length, drifted: yes.length, started: started.length, abandoned: yes.length - started.length,
+    medSec: median(started.map(function (r) { return r.sec; })), hours: topK(hours, 3), hoursN: hours, intents: topK(intents, 3), intentsN: intents };
+}
+function paintStats() {
+  var st = stats(lastDays(7));
+  var t = $("stTiles"); t.innerHTML = "";
+  [[st.asked, "ครั้งที่ถาม"], [st.asked ? Math.round(st.drifted / st.asked * 100) + "%" : "–", "หลุดโฟกัส"],
+   [st.drifted ? st.started + "/" + st.drifted : "–", "กลับมาเริ่มได้"], [st.medSec != null ? Math.max(1, Math.round(st.medSec / 60)) + " นาที" : "–", "ใช้เวลากลับมา (กลาง)"]].forEach(function (x) {
+    var d = document.createElement("div"), b = document.createElement("b"); b.textContent = x[0]; d.appendChild(b); d.appendChild(document.createTextNode(x[1])); t.appendChild(d);
+  });
+  var f = $("stFacts"); f.innerHTML = "";
+  function li(s) { var e = document.createElement("li"); e.textContent = s; f.appendChild(e); }
+  if (!st.asked) li("ยังไม่มีข้อมูล — ใช้ไปสักพักแล้วกลับมาดู");
+  if (st.hours.length) li("หลุดบ่อยช่วง: " + st.hours.map(function (h) { return h + ":00–" + ((+h + 1) % 24) + ":00 (" + st.hoursN[h] + ")"; }).join(", "));
+  if (st.intents.length) li("งานที่หลุดบ่อย: " + st.intents.map(function (i) { return i + " (" + st.intentsN[i] + ")"; }).join(", "));
+  if (st.abandoned) li("เลิกกลางทาง " + st.abandoned + " ครั้ง");
+  $("stAsk").hidden = !hasAI();
+}
+// compact rows for the AI (no ids, short keys kept readable)
+function rowsForAI(days) {
+  return lastDays(days).map(function (r) {
+    return { day: dstr(r.at), time: hhmm(r.at), from: r.src, drifted: r.ans === "yes", intent: r.intent, outcome: r.out, minutes: r.sec != null ? Math.round(r.sec / 6) / 10 : undefined,
+      steps: (r.steps || []).map(function (s) { return (s.r === "cant" ? "✗ " : "✓ ") + s.a; }) };
+  });
+}
+function analysisText() {
+  var st = stats(lastDays(7)), o = [];
+  o.push("# Focus log — ช่วยวิเคราะห์หน่อย");
+  o.push("");
+  o.push("เป้าหมายของผมคือ หลุดโฟกัสให้น้อยที่สุด และถ้าหลุดก็กลับมาได้เร็วที่สุด ช่วยดูข้อมูลแล้วบอกว่า: หลุดบ่อยตอนไหน/งานไหน, อะไรช่วยให้กลับมาได้เร็ว, ขั้นแบบไหนที่ทำไม่ได้บ่อย, และควรลองอะไร 1–2 อย่างในสัปดาห์หน้า (สั้นๆ ไม่ตำหนิ)");
+  o.push("");
+  o.push("วิธีเก็บ: แอปถามว่า \"ตอนนี้หลุดจากเป้าหมายอยู่ไหม?\" (from=notify = ถูกเรียกจากแจ้งเตือน, manual = เปิดเอง) ถ้าตอบใช่ จะถามว่าตั้งใจทำอะไร แล้วให้ทำทีละขั้นเล็กๆ ✓ = ทำแล้ว ✗ = ทำไม่ได้ outcome: started = กลับมาเริ่มงานได้, abandoned = เลิกกลางทาง, no = ไม่ได้หลุด");
+  o.push("");
+  o.push("## 7 วันที่ผ่านมา");
+  o.push("- ถูกถาม " + st.asked + " ครั้ง · หลุด " + st.drifted + " · กลับมาเริ่มได้ " + st.started + " · เลิกกลางทาง " + st.abandoned);
+  if (st.medSec != null) o.push("- เวลากลับมาเริ่มงาน (median): " + Math.round(st.medSec / 6) / 10 + " นาที");
+  o.push("");
+  o.push("## ข้อมูลรายครั้ง (14 วัน)");
+  o.push("");
+  o.push("```json");
+  o.push(JSON.stringify(rowsForAI(14)));
+  o.push("```");
+  return o.join("\n");
+}
+$("stOpen").onclick = function () { back = S.screen; S.screen = "stats"; $("stAI").textContent = ""; show(); };
+$("stBack").onclick = function () { S.screen = back; save(); show(); };
+$("stCopy").onclick = function () {
+  var b = this, t = analysisText();
+  if (navigator.share) { navigator.share({ title: "Focus log", text: t }).catch(function () {}); return; }
+  (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function () { b.textContent = "✓ Copied"; }).catch(function () { prompt("Copy:", t); });
+};
+$("stAsk").onclick = function () {
+  var box = $("stAI"), btn = this; box.textContent = "กำลังวิเคราะห์…"; btn.disabled = true;
+  var ctrl = window.AbortController ? new AbortController() : null, tm = setTimeout(function () { if (ctrl) ctrl.abort(); }, 60000);
+  fetch(cfg.url, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, signal: ctrl ? ctrl.signal : undefined,
+    body: JSON.stringify({ pass: cfg.pass, action: "analyze", rounds: rowsForAI(14) }) })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      if (!d || !d.ok) throw new Error((d && d.error) || "?");
+      box.textContent = (d.insights || []).map(function (x) { return "• " + x; }).join("\n") + (d.try_next ? "\n\n👉 ลองสัปดาห์นี้: " + d.try_next : "");
+    })
+    .catch(function (e) { box.textContent = "วิเคราะห์ไม่ได้ (" + (e && e.message === "unauthorized" ? "passcode ไม่ถูกต้อง" : e && e.message === "daily_limit" ? "ใช้ครบโควตาวันนี้" : "เชื่อม AI ไม่ได้") + ") — ใช้ปุ่ม Copy ส่งให้ AI ตัวอื่นแทนได้"; })
+    .then(function () { clearTimeout(tm); btn.disabled = false; });
+};
 
 // settings
 var back = "ask";
@@ -300,10 +426,12 @@ $("cfgTest").onclick = function () {
 
 // opened from a notification (?src=notify) → always a new round; otherwise resume this tab's round
 var fromNotify = /[?&]src=notify\b/.test(location.search);
-S = fromNotify ? null : load();
+S = load();
+// a round left unfinished in another (closed) tab counts as abandoned
+try { var open = JSON.parse(localStorage.getItem(OKEY)); if (open && (!S || open.id !== S.id)) { var L0 = readLog(); L0.push(rowOf(open, "abandoned")); writeLog(L0); localStorage.removeItem(OKEY); } } catch (e) {}
 if (fromNotify && history.replaceState) history.replaceState(null, "", location.pathname); // a later reload resumes instead of restarting
-if (!S) fresh();
-else { if (S.screen === "cfg") S.screen = "ask"; show(); if (S.mode === "ai" && S.loading && S.screen === "step") askAI(); }
+if (fromNotify || !S) fresh(fromNotify ? "notify" : "manual");
+else { if (S.screen === "cfg" || S.screen === "stats") S.screen = "ask"; show(); if (S.mode === "ai" && S.loading && S.screen === "step") askAI(); }
 </script>
 </body>
 </html>
