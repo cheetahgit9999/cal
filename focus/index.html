@@ -17,7 +17,7 @@
   - Prototype: no server set up, or the server can't be reached → fixed example templates from this
     file, clearly labelled. It never pretends to be AI.
   The round (intent, steps) lives only in this tab's sessionStorage. In AI mode the intent and the
-  steps are sent to the owner's Apps Script and to Claude to pick the next step; nothing else.
+  steps are sent to the owner's Apps Script and to the AI (Gemini or Claude) to pick the next step; nothing else.
 
   Opening from a notification: link to  …/cal/focus/?src=notify  — that always starts a fresh round.
   Detecting "5 minutes in an app" and sending that notification is NOT this page's job; whatever sends
@@ -121,7 +121,7 @@ button:disabled{opacity:.45}
     <div class="ai" id="stAI"></div>
     <button class="pri" id="stAsk">🤖 ให้ AI วิเคราะห์</button>
     <button id="stCopy">📋 Copy ข้อมูลไปให้ AI ตัวอื่น</button>
-    <p class="sub" style="font-size:13px">ข้อมูลเก็บในเครื่องนี้เท่านั้น ไม่ได้อัปขึ้นเว็บ · ตอนกดวิเคราะห์จะส่งไป Apps Script ของคุณและ Claude</p>
+    <p class="sub" style="font-size:13px">ข้อมูลเก็บในเครื่องนี้เท่านั้น ไม่ได้อัปขึ้นเว็บ · ตอนกดวิเคราะห์จะส่งไป Apps Script ของคุณและ AI</p>
     <button class="ghost" id="stBack">← กลับ</button>
   </section>
 
@@ -133,7 +133,7 @@ button:disabled{opacity:.45}
     <p id="cfgMsg"></p>
     <div class="row"><button id="cfgTest">ทดสอบ</button><button class="yes" id="cfgSave">บันทึก</button></div>
     <button class="ghost" id="cfgClear">ล้างการตั้งค่า (ใช้ขั้นตอนตัวอย่าง)</button>
-    <p class="sub" style="font-size:13px">เก็บไว้ในเครื่องนี้เท่านั้น · เวลาใช้ AI สิ่งที่พิมพ์และขั้นที่ทำแล้วจะถูกส่งไป Apps Script ของคุณและ Claude เพื่อคิดขั้นถัดไป</p>
+    <p class="sub" style="font-size:13px">เก็บไว้ในเครื่องนี้เท่านั้น · เวลาใช้ AI สิ่งที่พิมพ์และขั้นที่ทำแล้วจะถูกส่งไป Apps Script ของคุณและ AI (Gemini หรือ Claude) เพื่อคิดขั้นถัดไป</p>
     <button class="ghost" id="cfgBack">← กลับ</button>
   </section>
 
@@ -243,7 +243,7 @@ function show() {
   var p = $("proto");
   p.hidden = !(S.screen === "step" || S.screen === "end");
   p.className = "proto" + (S.mode === "ai" ? " ai" : "");
-  p.textContent = S.mode === "ai" ? "AI ช่วยคิด · Claude" : "ต้นแบบ · ขั้นตอนตัวอย่าง ยังไม่ได้ใช้ AI";
+  p.textContent = S.mode === "ai" ? "AI ช่วยคิด" + (S.provider ? " · " + (S.provider === "gemini" ? "Gemini" : "Claude") : "") : "ต้นแบบ · ขั้นตอนตัวอย่าง ยังไม่ได้ใช้ AI";
   $("cfgOpen").hidden = $("stOpen").hidden = S.screen !== "ask";
   if (S.screen === "stats") paintStats();
   if (S.screen === "intent") { $("intentIn").value = S.intent || ""; setTimeout(function () { $("intentIn").focus(); }, 50); }
@@ -279,13 +279,13 @@ function askAI() {
     .then(function (d) {
       if (my !== inflight) return;
       if (!d || !d.ok || !d.action) throw new Error((d && d.error) || "no_action");
-      S.action = d.action; S.started = !!d.started; S.loading = false; S.note = "";
+      S.action = d.action; S.started = !!d.started; S.loading = false; S.note = ""; if (d.provider) S.provider = d.provider;
       save(); show();
     })
     .catch(function (e) {
       if (my !== inflight) return;
       // can't reach the AI: carry on with the example steps, and say so
-      var why = e && e.message === "unauthorized" ? "passcode ไม่ถูกต้อง" : e && e.message === "daily_limit" ? "ใช้ครบโควตาวันนี้แล้ว" : "เชื่อม AI ไม่ได้";
+      var why = e && e.message === "unauthorized" ? "passcode ไม่ถูกต้อง" : e && e.message === "daily_limit" ? "ใช้ครบโควตาวันนี้แล้ว" : e && e.message === "rate_limited" ? "AI ฟรีใช้ถี่เกิน รอสักครู่" : "เชื่อม AI ไม่ได้";
       S.mode = "proto"; S.loading = false;
       S.step = Math.min(S.done.length, stepsFor(S.intent).length - 1); S.alt = 0;
       S.note = why + " — ใช้ขั้นตอนตัวอย่างแทน";
@@ -400,7 +400,7 @@ $("stAsk").onclick = function () {
       if (!d || !d.ok) throw new Error((d && d.error) || "?");
       box.textContent = (d.insights || []).map(function (x) { return "• " + x; }).join("\n") + (d.try_next ? "\n\n👉 ลองสัปดาห์นี้: " + d.try_next : "");
     })
-    .catch(function (e) { box.textContent = "วิเคราะห์ไม่ได้ (" + (e && e.message === "unauthorized" ? "passcode ไม่ถูกต้อง" : e && e.message === "daily_limit" ? "ใช้ครบโควตาวันนี้" : "เชื่อม AI ไม่ได้") + ") — ใช้ปุ่ม Copy ส่งให้ AI ตัวอื่นแทนได้"; })
+    .catch(function (e) { box.textContent = "วิเคราะห์ไม่ได้ (" + (e && e.message === "unauthorized" ? "passcode ไม่ถูกต้อง" : e && e.message === "daily_limit" ? "ใช้ครบโควตาวันนี้" : e && e.message === "rate_limited" ? "AI ฟรีใช้ถี่เกิน รอสักครู่" : "เชื่อม AI ไม่ได้") + ") — ใช้ปุ่ม Copy ส่งให้ AI ตัวอื่นแทนได้"; })
     .then(function () { clearTimeout(tm); btn.disabled = false; });
 };
 
@@ -420,7 +420,7 @@ $("cfgTest").onclick = function () {
   $("cfgMsg").textContent = "กำลังทดสอบ…";
   fetch(url, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ pass: pass, ping: true }) })
     .then(function (r) { return r.json(); })
-    .then(function (d) { $("cfgMsg").textContent = d && d.ok ? "เชื่อมได้ ✓ passcode ถูกต้อง" : "ไม่ผ่าน: " + ((d && d.error) || "?"); })
+    .then(function (d) { $("cfgMsg").textContent = d && d.ok ? "เชื่อมได้ ✓ passcode ถูกต้อง" + (d.provider ? " · ใช้ " + (d.provider === "gemini" ? "Gemini" : "Claude") : "") : "ไม่ผ่าน: " + ((d && d.error) || "?"); })
     .catch(function () { $("cfgMsg").textContent = "เชื่อมไม่ได้ — เช็ก URL (ต้องลงท้าย /exec และ deploy ให้ Anyone)"; });
 };
 
