@@ -17,7 +17,10 @@
  *  1. script.google.com → New project → paste this file.
  *  2. Project Settings → Script properties → add the key above and
  *       FOCUS_PASSCODE    = a long passcode you make up (also typed into /focus/ ⚙ on your phone)
- *  3. Deploy → New deployment → Web app → Execute as: Me · Who has access: Anyone → copy the /exec URL.
+ *  3. Pick testAI in the function menu at the top → ▶ Run → Allow. The log must say "✓ AI answered".
+ *     (This also grants the "connect to an external service" permission the web app needs.)
+ *  4. Deploy → New deployment → Web app → Execute as: Me · Who has access: Anyone → copy the /exec URL.
+ *     After pasting a newer version of this file: Deploy → Manage deployments → Edit → Version: New version.
  *     ("Anyone" is needed so the page can call it without a Google sign-in; the passcode is the lock.)
  *
  * Nothing is stored here except a per-day request counter (DAILY_LIMIT caps spend if the passcode leaks).
@@ -79,6 +82,23 @@ function doGet() {
 }
 
 function doPost(e) {
+  try { return handle_(e); } catch (x) { // never answer with an HTML error page: say what broke
+    return json_({ ok: false, error: "server_exception", detail: clip_(x && x.message, 200) });
+  }
+}
+
+// Run this once from the editor (select testAI → ▶ Run): it asks for permission to call the AI over the
+// internet (click Allow), then shows in the log whether the key and model work.
+function testAI() {
+  var props = PropertiesService.getScriptProperties(), ai = provider_(props);
+  if (!props.getProperty("FOCUS_PASSCODE")) Logger.log("✗ FOCUS_PASSCODE is missing in Script properties");
+  if (!ai) { Logger.log("✗ No GEMINI_API_KEY (or ANTHROPIC_API_KEY) in Script properties"); return; }
+  Logger.log("Provider: " + ai.name + (ai.name === "gemini" ? " · model: " + (geminiModel_(ai, true) || "NONE FOUND (key wrong?)") : ""));
+  var got = askAI_(ai, SYSTEM, "What I mean to do now: ทำงาน\nGive me the one next action.", SCHEMA, "low", 1024);
+  Logger.log(got.ok ? "✓ AI answered: " + got.data.action : "✗ AI error: " + got.error + (got.detail ? " — " + got.detail : ""));
+}
+
+function handle_(e) {
   var req;
   try { req = JSON.parse(e.postData.contents); } catch (x) { return json_({ ok: false, error: "bad_request" }); }
 
@@ -102,7 +122,7 @@ function doPost(e) {
     "Give me the one next action.";
 
   var got = askAI_(ai, SYSTEM, user, SCHEMA, "low", 1024);
-  if (!got.ok) return json_(got);
+  if (!got.ok) return json_({ ok: false, error: got.error, detail: clip_(got.detail, 200) });
   var out = got.data;
   var action = clip_(out.action, 120);
   if (action && done.concat(cant).some(function (a) { return same_(a, action); })) { // repeated an old step: ask once more
@@ -125,7 +145,7 @@ function analyze_(ai, rounds) {
   });
   if (!rows.length) return json_({ ok: true, insights: ["ยังไม่มีข้อมูลให้วิเคราะห์ — ใช้ไปสักพักก่อน"], try_next: "" });
   var got = askAI_(ai, ANALYZE_SYSTEM, "My focus log (JSON, oldest first):\n" + JSON.stringify(rows), ANALYZE_SCHEMA, "medium", 4000);
-  if (!got.ok) return json_(got);
+  if (!got.ok) return json_({ ok: false, error: got.error, detail: clip_(got.detail, 200) });
   var ins = (Array.isArray(got.data.insights) ? got.data.insights : []).slice(0, 6).map(function (x) { return clip_(x, 300); }).filter(String);
   return json_({ ok: true, insights: ins, try_next: clip_(got.data.try_next, 300), provider: ai.name });
 }
@@ -154,16 +174,17 @@ function askAI_(ai, system, user, schema, effort, maxTokens) {
 var GEMINI_API = "https://generativelanguage.googleapis.com/v1beta/";
 function callGemini_(ai, system, user, schema, maxTokens) {
   var model = geminiModel_(ai, false);
-  if (!model) return { ok: false, error: "no_model" };
+  if (!model) return { ok: false, error: "no_model", detail: ai.why || "" };
   var res = geminiPost_(ai, model, system, user, schema, maxTokens);
   if (res && res.code === 404) { // model retired or renamed: find a current one and retry once
     model = geminiModel_(ai, true);
-    if (!model) return { ok: false, error: "no_model" };
+    if (!model) return { ok: false, error: "no_model", detail: ai.why || "" };
     res = geminiPost_(ai, model, system, user, schema, maxTokens);
   }
-  if (!res) return { ok: false, error: "network" };
-  if (res.code === 429) return { ok: false, error: "rate_limited" };
-  if (res.code !== 200) return { ok: false, error: "upstream_" + res.code };
+  if (!res || res.failed) return { ok: false, error: "network", detail: (res && res.failed) || "" };
+  var why = (res.data && res.data.error && res.data.error.message) || "";
+  if (res.code === 429) return { ok: false, error: "rate_limited", detail: why };
+  if (res.code !== 200) return { ok: false, error: "upstream_" + res.code, detail: why };
   var d = res.data || {};
   if (d.promptFeedback && d.promptFeedback.blockReason) return { ok: false, error: "refusal" };
   var c = (d.candidates || [])[0];
@@ -187,7 +208,7 @@ function geminiPost_(ai, model, system, user, schema, maxTokens) {
     var data = null;
     try { data = JSON.parse(r.getContentText()); } catch (x) {}
     return { code: r.getResponseCode(), data: data };
-  } catch (x) { return null; }
+  } catch (x) { return { failed: String(x && x.message || x) }; } // e.g. "no permission to call UrlFetchApp" until testAI is run once
 }
 // newest stable "flash" model this key can call; cached for a week, re-found when it disappears
 function geminiModel_(ai, refresh) {
@@ -200,14 +221,17 @@ function geminiModel_(ai, refresh) {
     var page = "";
     for (var i = 0; i < 5; i++) {
       var r = UrlFetchApp.fetch(GEMINI_API + "models?pageSize=200" + (page ? "&pageToken=" + encodeURIComponent(page) : ""), { headers: { "x-goog-api-key": ai.key }, muteHttpExceptions: true });
-      if (r.getResponseCode() !== 200) break;
+      if (r.getResponseCode() !== 200) {
+        try { ai.why = "list models " + r.getResponseCode() + ": " + JSON.parse(r.getContentText()).error.message; } catch (x) { ai.why = "list models " + r.getResponseCode(); }
+        break;
+      }
       var d = JSON.parse(r.getContentText());
       (d.models || []).forEach(function (m) {
         if ((m.supportedGenerationMethods || []).indexOf("generateContent") >= 0) names.push(String(m.name || "").replace(/^models\//, ""));
       });
       page = d.nextPageToken; if (!page) break;
     }
-  } catch (x) {}
+  } catch (x) { ai.why = String(x && x.message || x); }
   var best = pickGemini_(names);
   if (best) ai.props.setProperty("GEMINI_MODEL_AUTO", best + "|" + Date.now());
   return best || pinned || parts[0] || null;
@@ -238,11 +262,11 @@ function callClaude_(key, body) {
       muteHttpExceptions: true
     });
   } catch (x) {
-    return { ok: false, error: "network" };
+    return { ok: false, error: "network", detail: String(x && x.message || x) };
   }
   var code = res.getResponseCode(), data;
   try { data = JSON.parse(res.getContentText()); } catch (x) { return { ok: false, error: "bad_upstream" }; }
-  if (code !== 200) return { ok: false, error: "upstream_" + code };
+  if (code !== 200) return { ok: false, error: "upstream_" + code, detail: (data && data.error && data.error.message) || "" };
   if (data.stop_reason === "refusal") return { ok: false, error: "refusal" };
   var text = null;
   (data.content || []).forEach(function (b) { if (b.type === "text" && text === null) text = b.text; });
