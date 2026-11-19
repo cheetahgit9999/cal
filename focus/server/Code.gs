@@ -29,6 +29,17 @@
  * (kept on the phone, never published) and the AI reads it for patterns. The log is not stored here either.
  */
 
+// Run this once from the editor (it is the first function, so just press ▶ Run): it asks for permission to call the AI over the
+// internet (click Allow), then shows in the log whether the key and model work.
+function testAI() {
+  var props = PropertiesService.getScriptProperties(), ai = provider_(props);
+  if (!props.getProperty("FOCUS_PASSCODE")) Logger.log("✗ FOCUS_PASSCODE is missing in Script properties");
+  if (!ai) { Logger.log("✗ No GEMINI_API_KEY (or ANTHROPIC_API_KEY) in Script properties"); return; }
+  Logger.log("Provider: " + ai.name + (ai.name === "gemini" ? " · model: " + (geminiModel_(ai, true) || "NONE FOUND (key wrong?)") : ""));
+  var got = askAI_(ai, SYSTEM, "What I mean to do now: ทำงาน\nGive me the one next action.", SCHEMA, "low", 1024);
+  Logger.log(got.ok ? "✓ AI answered: " + got.data.action : "✗ AI error: " + got.error + (got.detail ? " — " + got.detail : ""));
+}
+
 var MODEL = "claude-opus-5-5";
 var DAILY_LIMIT = 150;
 
@@ -85,17 +96,6 @@ function doPost(e) {
   try { return handle_(e); } catch (x) { // never answer with an HTML error page: say what broke
     return json_({ ok: false, error: "server_exception", detail: clip_(x && x.message, 200) });
   }
-}
-
-// Run this once from the editor (select testAI → ▶ Run): it asks for permission to call the AI over the
-// internet (click Allow), then shows in the log whether the key and model work.
-function testAI() {
-  var props = PropertiesService.getScriptProperties(), ai = provider_(props);
-  if (!props.getProperty("FOCUS_PASSCODE")) Logger.log("✗ FOCUS_PASSCODE is missing in Script properties");
-  if (!ai) { Logger.log("✗ No GEMINI_API_KEY (or ANTHROPIC_API_KEY) in Script properties"); return; }
-  Logger.log("Provider: " + ai.name + (ai.name === "gemini" ? " · model: " + (geminiModel_(ai, true) || "NONE FOUND (key wrong?)") : ""));
-  var got = askAI_(ai, SYSTEM, "What I mean to do now: ทำงาน\nGive me the one next action.", SCHEMA, "low", 1024);
-  Logger.log(got.ok ? "✓ AI answered: " + got.data.action : "✗ AI error: " + got.error + (got.detail ? " — " + got.detail : ""));
 }
 
 function handle_(e) {
