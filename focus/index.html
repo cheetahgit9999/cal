@@ -299,7 +299,7 @@ function relayAI(system, user, schema, fast, ms, url, pass) {
   // the free fast model is sometimes overloaded (503) or rate-limited: try the other model once before giving up
   return once(fast !== false).catch(function (e) {
     var busy = function (x) { return /^(upstream_5\d\d|rate_limited|network|bad_output)$/.test(x && x.message); };
-    if (fast === false || !busy(e)) throw e;
+    if (fast === false || !busy(e) || / · /.test(e.detail || "")) throw e; // " · " = the server already tried several providers
     return once(false).catch(function (e2) { // both busy: one more try on the fast model after a short pause
       if (!busy(e2)) throw e2;
       return new Promise(function (ok) { setTimeout(ok, 2000); }).then(function () { return once(true); });
@@ -310,6 +310,7 @@ function stepCtx(avoid) {
   return { intent: S.intent || "สิ่งที่ตั้งใจไว้", detail: S.title && S.title !== S.intent ? S.title : S.detail || "", where: S.where || "", block: S.block || "",
     done: S.done.slice(-30), cant: S.cant.slice(-30), why: (S.why || []).slice(-10), streak: cantStreak(), memory: memoryFor(S.intent, S.id), avoid: avoid || "" };
 }
+function provName(p) { return { gemini: "Gemini", groq: "Groq", cerebras: "Cerebras", openrouter: "OpenRouter", mistral: "Mistral", claude: "Claude" }[p] || p; }
 function aiUrl() { return cfg.url || DEFAULT_URL; }
 function hasAI() { return !!(aiUrl() && cfg.pass); }
 
@@ -375,7 +376,7 @@ function show() {
   var p = $("proto");
   p.hidden = !(S.screen === "step" || S.screen === "end");
   p.className = "proto" + (S.mode === "ai" ? " ai" : "");
-  p.textContent = S.mode === "ai" ? "AI ช่วยคิด" + (S.provider ? " · " + (S.provider === "gemini" ? "Gemini" : "Claude") : "") : "ต้นแบบ · ขั้นตอนตัวอย่าง ยังไม่ได้ใช้ AI";
+  p.textContent = S.mode === "ai" ? "AI ช่วยคิด" + (S.provider ? " · " + provName(S.provider) : "") : "ต้นแบบ · ขั้นตอนตัวอย่าง ยังไม่ได้ใช้ AI";
   $("cfgOpen").hidden = $("stOpen").hidden = S.screen !== "ask";
   if (S.screen === "stats") paintStats();
   if (S.screen === "intent") { $("intentIn").value = S.intent || ""; setTimeout(function () { $("intentIn").focus(); }, 50); }
@@ -888,7 +889,7 @@ $("cfgTest").onclick = function () {
     })
     .then(function (d) {
       if (!d || !d.action) throw srvErr({ error: "bad_output" });
-      msg.textContent = "✓ AI ตอบได้" + (d.provider ? " (" + (d.provider === "gemini" ? "Gemini" : "Claude") + ")" : "") + ": “" + d.action + "”";
+      msg.textContent = "✓ AI ตอบได้" + (d.provider ? " (" + provName(d.provider) + ")" : "") + ": “" + d.action + "”";
     })
     .catch(function (e) { msg.textContent = "ไม่ผ่าน: " + errText(e && e.message, e && e.detail); });
 };
