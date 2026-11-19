@@ -238,6 +238,31 @@ var CKEY = "focus.cfg", cfg = {};
 try { cfg = JSON.parse(localStorage.getItem(CKEY)) || {}; } catch (e) { cfg = {}; }
 // the Apps Script web-app URL is not a secret (it does nothing without the passcode), so it ships with the page; only the passcode is typed on each device
 var DEFAULT_URL = "https://script.google.com/macros/s/AKfycbyu5VOm3aXCMTdwx5g4TrQAqe1RuQZAeQ-FDQVax2FZjDRMpG0HxMEBpY1uPmzyYrgXMg/exec";
+// what went wrong, in words the person can act on (the code stays visible so it can be reported)
+function errText(code, detail) {
+  var m = {
+    unauthorized: "passcode ไม่ถูกต้อง", daily_limit: "ใช้ครบโควตาวันนี้แล้ว", rate_limited: "AI ฟรีใช้ถี่เกิน รอสักครู่",
+    timeout: "AI ตอบช้าเกิน 25 วินาที ลองใหม่อีกครั้ง", offline: "เน็ตหลุด หรือเปิด URL ไม่ได้",
+    server_error: "Apps Script error — เปิด Apps Script แล้วกด Run ฟังก์ชัน testAI 1 ครั้ง (กด Allow) แล้ว Deploy เป็น New version",
+    server_exception: "Apps Script พัง — ถ้าข้อความบอกเรื่อง permission ให้ Run testAI ใน editor แล้วกด Allow",
+    server_not_configured: "ยังไม่ได้ใส่ GEMINI_API_KEY หรือ FOCUS_PASSCODE ใน Script properties",
+    no_model: "GEMINI_API_KEY ใช้ไม่ได้ (ผิด/ถูกปิด) — สร้างใหม่ที่ aistudio.google.com",
+    upstream_400: "GEMINI_API_KEY ผิด หรือ AI ไม่รับคำขอ", upstream_401: "API key ผิด", upstream_403: "API key ไม่มีสิทธิ์ / ยังไม่เปิดใช้ Gemini API",
+    upstream_404: "ไม่พบโมเดล AI — ลบ GEMINI_MODEL ใน Script properties", network: "Apps Script ต่อ AI ไม่ได้ ลองใหม่",
+    refusal: "AI ไม่ยอมตอบเรื่องนี้", bad_output: "AI ตอบผิดรูปแบบ ลองใหม่", bad_upstream: "AI ตอบผิดรูปแบบ ลองใหม่"
+  };
+  if (/permission|external_request/i.test(detail || "")) return "ยังไม่ได้อนุญาตให้ Apps Script ต่อเน็ต — ใน Apps Script เลือก testAI → ▶ Run → Allow แล้ว Deploy เป็น New version [" + code + "]";
+  return (m[code] || (/^upstream_5/.test(code) ? "AI ล่มชั่วคราว ลองใหม่" : "เชื่อม AI ไม่ได้")) + " [" + (code || "?") + (detail ? ": " + String(detail).slice(0, 160) : "") + "]";
+}
+function srvErr(d, dflt) { var e = new Error((d && d.error) || dflt); e.detail = d && d.detail; return e; }
+// POST to the Apps Script; rejects with Error(code) for every failure kind
+function callServer(url, body, ms) {
+  var ctrl = window.AbortController ? new AbortController() : null, tm = setTimeout(function () { if (ctrl) ctrl.abort(); }, ms);
+  return fetch(url, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body), signal: ctrl ? ctrl.signal : undefined })
+    .then(function (r) { return r.text(); }, function (e) { throw new Error(e && e.name === "AbortError" ? "timeout" : "offline"); })
+    .then(function (t) { var d; try { d = JSON.parse(t); } catch (x) { throw new Error("server_error"); } return d; })
+    .finally(function () { clearTimeout(tm); });
+}
 function aiUrl() { return cfg.url || DEFAULT_URL; }
 function hasAI() { return !!(aiUrl() && cfg.pass); }
 var MAX_STEPS = 8;
@@ -339,18 +364,10 @@ window.addEventListener("beforeunload", function () { leaving = true; });
 function askAI() {
   var my = ++inflight;
   S.loading = true; save(); show();
-  var ctrl = window.AbortController ? new AbortController() : null;
-  var timer = setTimeout(function () { if (ctrl) ctrl.abort(); }, 25000);
-  fetch(aiUrl(), {
-    method: "POST",
-    headers: { "Content-Type": "text/plain;charset=utf-8" }, // a "simple" request: no CORS preflight
-    body: JSON.stringify({ pass: cfg.pass, intent: S.intent, done: S.done, cant: S.cant, why: S.why || [], streak: cantStreak(), memory: memoryFor(S.intent, S.id) }),
-    signal: ctrl ? ctrl.signal : undefined
-  })
-    .then(function (r) { return r.json(); })
+  callServer(aiUrl(), { pass: cfg.pass, intent: S.intent, done: S.done, cant: S.cant, why: S.why || [], streak: cantStreak(), memory: memoryFor(S.intent, S.id) }, 40000)
     .then(function (d) {
       if (my !== inflight) return;
-      if (!d || !d.ok || !d.action) throw new Error((d && d.error) || "no_action");
+      if (!d || !d.ok || !d.action) throw srvErr(d, "no_action");
       if (isUsed(d.action)) { // the AI repeated itself: never show the same step twice, take the next smaller fallback instead
         var alt = easierLadder(S.intent).filter(function (a) { return !isUsed(a); })[0];
         d.action = alt || REST; d.started = false;
@@ -360,14 +377,12 @@ function askAI() {
     })
     .catch(function (e) {
       if (my !== inflight || leaving) return;
-      // can't reach the AI: carry on with the example steps, and say so
-      var why = e && e.message === "unauthorized" ? "passcode ไม่ถูกต้อง" : e && e.message === "daily_limit" ? "ใช้ครบโควตาวันนี้แล้ว" : e && e.message === "rate_limited" ? "AI ฟรีใช้ถี่เกิน รอสักครู่" : "เชื่อม AI ไม่ได้";
+      // can't reach the AI: carry on with the example steps, and say exactly why
       S.mode = "proto"; S.loading = false;
       S.step = Math.min(S.done.length, stepsFor(S.intent).length - 1); S.alt = 0;
-      S.note = why + " — ใช้ขั้นตอนตัวอย่างแทน";
+      S.note = errText(e && e.message, e && e.detail) + " — ใช้ขั้นตอนตัวอย่างแทน";
       save(); show();
-    })
-    .then(function () { clearTimeout(timer); });
+    });
 }
 
 $("no").onclick = function () { S.screen = "no"; logRound("no"); save(); show(); };
@@ -488,16 +503,13 @@ $("stCopy").onclick = function () {
 };
 $("stAsk").onclick = function () {
   var box = $("stAI"), btn = this; box.textContent = "กำลังวิเคราะห์…"; btn.disabled = true;
-  var ctrl = window.AbortController ? new AbortController() : null, tm = setTimeout(function () { if (ctrl) ctrl.abort(); }, 60000);
-  fetch(aiUrl(), { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, signal: ctrl ? ctrl.signal : undefined,
-    body: JSON.stringify({ pass: cfg.pass, action: "analyze", rounds: rowsForAI(14) }) })
-    .then(function (r) { return r.json(); })
+  callServer(aiUrl(), { pass: cfg.pass, action: "analyze", rounds: rowsForAI(14) }, 60000)
     .then(function (d) {
-      if (!d || !d.ok) throw new Error((d && d.error) || "?");
+      if (!d || !d.ok) throw srvErr(d, "?");
       box.textContent = (d.insights || []).map(function (x) { return "• " + x; }).join("\n") + (d.try_next ? "\n\n👉 ลองสัปดาห์นี้: " + d.try_next : "");
     })
-    .catch(function (e) { box.textContent = "วิเคราะห์ไม่ได้ (" + (e && e.message === "unauthorized" ? "passcode ไม่ถูกต้อง" : e && e.message === "daily_limit" ? "ใช้ครบโควตาวันนี้" : e && e.message === "rate_limited" ? "AI ฟรีใช้ถี่เกิน รอสักครู่" : "เชื่อม AI ไม่ได้") + ") — ใช้ปุ่ม Copy ส่งให้ AI ตัวอื่นแทนได้"; })
-    .then(function () { clearTimeout(tm); btn.disabled = false; });
+    .catch(function (e) { box.textContent = "วิเคราะห์ไม่ได้: " + errText(e && e.message, e && e.detail) + " — ใช้ปุ่ม Copy ส่งให้ AI ตัวอื่นแทนได้"; })
+    .then(function () { btn.disabled = false; });
 };
 
 // ===== goals.md: one public page an AI can always read — goal scoreboard (focus + gym) + raw focus log =====
@@ -668,14 +680,22 @@ $("cfgSave").onclick = function () {
   $("cfgMsg").textContent = hasAI() ? "บันทึกแล้ว ✓" : "บันทึกแล้ว (ยังไม่ครบ — ใช้ขั้นตอนตัวอย่าง)";
 };
 $("cfgClear").onclick = function () { cfg = {}; try { localStorage.removeItem(CKEY); } catch (e) {} show(); };
+// test = passcode check, then one real AI answer, so "connected" is only shown when the AI really answers
 $("cfgTest").onclick = function () {
-  var url = $("cfgUrl").value.trim() || DEFAULT_URL, pass = $("cfgPass").value;
-  if (!pass) { $("cfgMsg").textContent = "ใส่ passcode ก่อน"; return; }
-  $("cfgMsg").textContent = "กำลังทดสอบ…";
-  fetch(url, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ pass: pass, ping: true }) })
-    .then(function (r) { return r.json(); })
-    .then(function (d) { $("cfgMsg").textContent = d && d.ok ? "เชื่อมได้ ✓ passcode ถูกต้อง" + (d.provider ? " · ใช้ " + (d.provider === "gemini" ? "Gemini" : "Claude") : "") : "ไม่ผ่าน: " + ((d && d.error) || "?"); })
-    .catch(function () { $("cfgMsg").textContent = "เชื่อมไม่ได้ — เช็ก URL (ต้องลงท้าย /exec และ deploy ให้ Anyone)"; });
+  var url = $("cfgUrl").value.trim() || DEFAULT_URL, pass = $("cfgPass").value, msg = $("cfgMsg");
+  if (!pass) { msg.textContent = "ใส่ passcode ก่อน"; return; }
+  msg.textContent = "กำลังทดสอบ passcode…";
+  callServer(url, { pass: pass, ping: true }, 30000)
+    .then(function (d) {
+      if (!d || !d.ok) throw srvErr(d, "?");
+      msg.textContent = "passcode ✓ · กำลังลองถาม AI จริง…";
+      return callServer(url, { pass: pass, intent: "ทำงาน", done: [], cant: [] }, 40000);
+    })
+    .then(function (d) {
+      if (!d || !d.ok || !d.action) throw srvErr(d, "no_action");
+      msg.textContent = "✓ AI ตอบได้" + (d.provider ? " (" + (d.provider === "gemini" ? "Gemini" : "Claude") + ")" : "") + ": “" + d.action + "”";
+    })
+    .catch(function (e) { msg.textContent = "ไม่ผ่าน: " + errText(e && e.message, e && e.detail); });
 };
 
 // opened from a notification (?src=notify) → always a new round; otherwise resume this tab's round
