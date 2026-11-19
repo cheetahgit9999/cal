@@ -80,6 +80,7 @@ button:disabled{opacity:.45}
 .facts li{margin:3px 0}
 .ai{background:#0d1b2e;border:1px solid #1f6feb66;border-radius:14px;padding:12px 14px;font-size:15px;white-space:pre-wrap}
 .ai:empty{display:none}
+.adv summary{color:var(--dim);font-size:13px;cursor:pointer;margin-bottom:8px}
 #cfgMsg{text-align:center;font-size:14px;color:var(--mut);min-height:20px;margin:0}
 </style>
 </head>
@@ -144,8 +145,11 @@ button:disabled{opacity:.45}
   <!-- settings -->
   <section class="screen" id="s-cfg">
     <h1>⚙ เชื่อม AI</h1>
-    <div><label>Server URL (Apps Script /exec)</label><input id="cfgUrl" type="url" inputmode="url" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off"></div>
     <div><label>Passcode</label><input id="cfgPass" type="password" autocomplete="off"></div>
+    <details class="adv"><summary>ขั้นสูง: เปลี่ยน Server URL</summary>
+      <input id="cfgUrl" type="url" inputmode="url" autocomplete="off">
+      <p class="sub" style="font-size:12px">เว้นว่าง = ใช้ Apps Script ที่ตั้งไว้ในหน้าเว็บ</p>
+    </details>
     <p id="cfgMsg"></p>
     <div class="row"><button id="cfgTest">ทดสอบ</button><button class="yes" id="cfgSave">บันทึก</button></div>
     <button class="ghost" id="cfgClear">ล้างการตั้งค่า (ใช้ขั้นตอนตัวอย่าง)</button>
@@ -232,7 +236,10 @@ function stepsFor(t) {
 // ===== AI connection (set in ⚙, kept only on this device) =====
 var CKEY = "focus.cfg", cfg = {};
 try { cfg = JSON.parse(localStorage.getItem(CKEY)) || {}; } catch (e) { cfg = {}; }
-function hasAI() { return !!(cfg.url && cfg.pass); }
+// the Apps Script web-app URL is not a secret (it does nothing without the passcode), so it ships with the page; only the passcode is typed on each device
+var DEFAULT_URL = "https://script.google.com/macros/s/AKfycbyu5VOm3aXCMTdwx5g4TrQAqe1RuQZAeQ-FDQVax2FZjDRMpG0HxMEBpY1uPmzyYrgXMg/exec";
+function aiUrl() { return cfg.url || DEFAULT_URL; }
+function hasAI() { return !!(aiUrl() && cfg.pass); }
 var MAX_STEPS = 8;
 
 // ===== round state: only in this tab (sessionStorage), so a reload resumes =====
@@ -302,7 +309,7 @@ function show() {
   if (S.screen === "step") paintStep();
   if (S.screen === "end") { $("lessonIn").value = S.lesson || ""; $("lessonMsg").textContent = S.lesson ? "✓ จำไว้แล้ว" : ""; }
   if (S.screen === "end") $("endSub").textContent = S.intent ? "“" + S.intent + "” — ทำต่อไปได้เลย" : "ทำต่อไปได้เลย";
-  if (S.screen === "cfg") { $("cfgUrl").value = cfg.url || ""; $("cfgPass").value = cfg.pass || ""; $("cfgMsg").textContent = hasAI() ? "เชื่อมไว้แล้ว" : "ยังไม่ได้เชื่อม — ตอนนี้ใช้ขั้นตอนตัวอย่าง"; }
+  if (S.screen === "cfg") { $("cfgUrl").value = cfg.url || ""; $("cfgUrl").placeholder = DEFAULT_URL; $("cfgPass").value = cfg.pass || ""; $("cfgMsg").textContent = hasAI() ? "เชื่อมไว้แล้ว" : "ยังไม่ได้เชื่อม — ตอนนี้ใช้ขั้นตอนตัวอย่าง"; }
 }
 function paintStep() {
   $("intentLbl").textContent = S.intent ? "ตั้งใจจะ: " + S.intent : "";
@@ -334,7 +341,7 @@ function askAI() {
   S.loading = true; save(); show();
   var ctrl = window.AbortController ? new AbortController() : null;
   var timer = setTimeout(function () { if (ctrl) ctrl.abort(); }, 25000);
-  fetch(cfg.url, {
+  fetch(aiUrl(), {
     method: "POST",
     headers: { "Content-Type": "text/plain;charset=utf-8" }, // a "simple" request: no CORS preflight
     body: JSON.stringify({ pass: cfg.pass, intent: S.intent, done: S.done, cant: S.cant, why: S.why || [], streak: cantStreak(), memory: memoryFor(S.intent, S.id) }),
@@ -482,7 +489,7 @@ $("stCopy").onclick = function () {
 $("stAsk").onclick = function () {
   var box = $("stAI"), btn = this; box.textContent = "กำลังวิเคราะห์…"; btn.disabled = true;
   var ctrl = window.AbortController ? new AbortController() : null, tm = setTimeout(function () { if (ctrl) ctrl.abort(); }, 60000);
-  fetch(cfg.url, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, signal: ctrl ? ctrl.signal : undefined,
+  fetch(aiUrl(), { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, signal: ctrl ? ctrl.signal : undefined,
     body: JSON.stringify({ pass: cfg.pass, action: "analyze", rounds: rowsForAI(14) }) })
     .then(function (r) { return r.json(); })
     .then(function (d) {
@@ -662,8 +669,8 @@ $("cfgSave").onclick = function () {
 };
 $("cfgClear").onclick = function () { cfg = {}; try { localStorage.removeItem(CKEY); } catch (e) {} show(); };
 $("cfgTest").onclick = function () {
-  var url = $("cfgUrl").value.trim(), pass = $("cfgPass").value;
-  if (!url || !pass) { $("cfgMsg").textContent = "ใส่ URL และ passcode ก่อน"; return; }
+  var url = $("cfgUrl").value.trim() || DEFAULT_URL, pass = $("cfgPass").value;
+  if (!pass) { $("cfgMsg").textContent = "ใส่ passcode ก่อน"; return; }
   $("cfgMsg").textContent = "กำลังทดสอบ…";
   fetch(url, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ pass: pass, ping: true }) })
     .then(function (r) { return r.json(); })
