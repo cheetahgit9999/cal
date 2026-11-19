@@ -298,8 +298,12 @@ function relayAI(system, user, schema, fast, ms, url, pass) {
   };
   // the free fast model is sometimes overloaded (503) or rate-limited: try the other model once before giving up
   return once(fast !== false).catch(function (e) {
-    if (fast === false || !/^(upstream_5\d\d|rate_limited|network|bad_output)$/.test(e && e.message)) throw e;
-    return once(false);
+    var busy = function (x) { return /^(upstream_5\d\d|rate_limited|network|bad_output)$/.test(x && x.message); };
+    if (fast === false || !busy(e)) throw e;
+    return once(false).catch(function (e2) { // both busy: one more try on the fast model after a short pause
+      if (!busy(e2)) throw e2;
+      return new Promise(function (ok) { setTimeout(ok, 2000); }).then(function () { return once(true); });
+    });
   });
 }
 function stepCtx(avoid) {
@@ -438,7 +442,7 @@ function askAI() {
     .catch(function (e) {
       if (my !== inflight || leaving) return;
       // can't reach the AI: carry on with the example steps, and say exactly why
-      S.mode = "proto"; S.loading = false;
+      S.mode = "proto"; S.loading = false; S.aiFailAt = Date.now();
       S.step = Math.min(S.done.length, stepsFor(S.intent).length - 1); S.alt = 0;
       S.note = errText(e && e.message, e && e.detail) + " — ใช้ขั้นตอนตัวอย่างแทน";
       save(); show();
@@ -556,6 +560,7 @@ $("did").onclick = function () {
   var a = protoAction(), goal = onGoalStep();
   S.done.push(a); ev("done", a);
   if (goal) { finish(); return; }
+  if (aiBack()) return;
   if (S.step + 1 < protoSteps().length) { S.step++; S.alt = 0; }
   S.note = ""; save(); show();
 };
@@ -573,7 +578,15 @@ function cantWhy() {
   var why = $("whyIn").value.trim().slice(0, 80);
   S.asking = false;
   if (S.mode === "ai") { S.cant.push(S.action); S.why = (S.why || []).concat(why ? [S.action + " — เพราะ " + why] : []); ev("cant", S.action, why); askAI(); return; }
-  ev("cant", protoAction(), why); S.alt++; save(); paintStep();
+  var a = protoAction(); S.cant.push(a); if (why) S.why = (S.why || []).concat([a + " — เพราะ " + why]);
+  ev("cant", a, why); S.alt++;
+  if (aiBack()) return;
+  save(); paintStep();
+}
+// after the AI was busy and we fell back to example steps, try the AI again at the next step (at most every 30 s)
+function aiBack() {
+  if (!hasAI() || !S.aiFailAt || Date.now() - S.aiFailAt < 30000) return false;
+  S.mode = "ai"; S.note = ""; S.aiFailAt = 0; askAI(); return true;
 }
 $("whyGo").onclick = cantWhy;
 $("whyIn").onkeydown = function (e) { if (e.key === "Enter") cantWhy(); };
