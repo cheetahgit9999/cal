@@ -14,6 +14,8 @@ var CLARIFY_SYSTEM = [
   "Ask about the goal first. Only after the goal is clear, and only if it helps find the easiest way to start, ask one",
   "short question about their situation (where they are / what they are doing now, or what is stopping them).",
   "At most 3 questions in total, usually 1-2. Not deep, no lecture, no blame. Skip anything already known.",
+  "They may explain a lot in one long message: use everything in it, ask only what is still missing, and set ready=true",
+  "right away if it already makes the goal clear. Keep the title short even when their text is long.",
   "Use their past data: if this goal usually means something specific, offer it as the first option.",
   "Return: title = the goal as clear as known so far, short Thai, growing as you learn more;",
   "where = where they are / what they are doing now if known, else empty; excuse = their reason for not starting if",

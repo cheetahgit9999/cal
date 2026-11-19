@@ -42,8 +42,9 @@ button:active{transform:scale(.98)}
 .yes{background:var(--acc);border-color:var(--acc);color:#fff}
 .pri{background:var(--ok);border-color:var(--ok);color:#fff;font-size:21px;font-weight:750;padding:20px}
 .ghost{background:none;color:var(--mut);font-size:15px;padding:12px}
-input{font:inherit;color:inherit;width:100%;background:#0b0e13;border:1px solid var(--line);border-radius:14px;padding:16px;font-size:20px}
-input:focus{outline:none;border-color:var(--acc)}
+input,textarea{font:inherit;color:inherit;width:100%;background:#0b0e13;border:1px solid var(--line);border-radius:14px;padding:16px;font-size:20px}
+textarea{resize:none;overflow:hidden;line-height:1.45;font-size:18px;min-height:60px;display:block}
+input:focus,textarea:focus{outline:none;border-color:var(--acc)}
 .chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
 .chips button{padding:9px 14px;border-radius:20px;font-size:15px;color:var(--mut)}
 .step{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:28px 20px;text-align:center}
@@ -114,7 +115,7 @@ button:disabled{opacity:.45}
   <!-- 2b. what do you mean to do -->
   <section class="screen" id="s-intent">
     <h1>ตอนนี้ตั้งใจจะทำอะไร?</h1>
-    <input id="intentIn" maxlength="40" placeholder="เช่น ทำงาน, อาบน้ำ" autocomplete="off" enterkeyhint="go">
+    <textarea id="intentIn" rows="2" maxlength="400" placeholder="เช่น ทำงาน, อาบน้ำ — หรือเล่ายาวๆ ได้เลย ว่าอยากทำอะไร ทำไม" autocomplete="off" enterkeyhint="go"></textarea>
     <div class="chips" id="chips"></div>
     <button class="pri" id="go">ต่อ</button>
   </section>
@@ -125,7 +126,7 @@ button:disabled{opacity:.45}
     <div class="clh" id="clHist"></div>
     <h1 id="clQ"></h1>
     <div class="chips" id="clOpts"></div>
-    <input id="clIn" maxlength="80" placeholder="ตอบเองก็ได้" autocomplete="off" enterkeyhint="send">
+    <textarea id="clIn" rows="2" maxlength="400" placeholder="ตอบเองก็ได้ — อธิบายยาวๆ ได้" autocomplete="off" enterkeyhint="send"></textarea>
     <button class="pri" id="clSend">ตอบ</button>
     <p class="note" id="clNote" hidden></p>
     <button class="ghost" id="clSkip">พอแล้ว เริ่มเลย →</button>
@@ -145,7 +146,7 @@ button:disabled{opacity:.45}
     <div class="why" id="whyBox" hidden>
       <div class="q">อะไรขวางไว้? <span>(ไม่ใส่ก็ได้ · AI จะจำไว้รอบหน้า)</span></div>
       <div class="chips" id="whyChips"></div>
-      <input id="whyIn" maxlength="80" placeholder="พิมพ์เองก็ได้" autocomplete="off" enterkeyhint="go">
+      <textarea id="whyIn" rows="2" maxlength="300" placeholder="พิมพ์เองก็ได้ — เล่ายาวๆ ได้" autocomplete="off" enterkeyhint="go"></textarea>
       <button class="pri" id="whyGo">ต่อ</button>
     </div>
   </section>
@@ -183,7 +184,7 @@ button:disabled{opacity:.45}
     <div class="done"><div class="ic">✓</div><h1>เริ่มแล้ว</h1><p class="sub" id="endSub"></p></div>
     <div class="why">
       <div class="q">📝 บันทึกให้ AI รอบหน้า <span>(ไม่ใส่ก็ได้)</span></div>
-      <input id="lessonIn" maxlength="120" placeholder="เช่น ขั้นวางมือถือได้ผลที่สุด" autocomplete="off" enterkeyhint="done">
+      <textarea id="lessonIn" rows="2" maxlength="400" placeholder="เช่น ขั้นวางมือถือได้ผลที่สุด" autocomplete="off" enterkeyhint="done"></textarea>
       <button id="lessonSave">บันทึก</button>
       <p class="mem" id="lessonMsg"></p>
     </div>
@@ -473,7 +474,7 @@ function runFix() {
     var out = Array.isArray(d.fixed) ? d.fixed : [];
     if (out.length !== list.length) return;
     var m = fixMap();
-    list.forEach(function (raw, i) { var f = String(out[i] || "").trim().slice(0, 120); m[raw] = f || raw; });
+    list.forEach(function (raw, i) { var f = String(out[i] || "").trim().slice(0, 450); m[raw] = f || raw; });
     try { localStorage.setItem(FKEY, JSON.stringify(m)); } catch (e) {}
     applyFixes(m);
     if (fixQ.length) runFix();
@@ -536,7 +537,7 @@ function protoQs() {
   ];
 }
 function toClarify() {
-  S.intent = $("intentIn").value.trim().slice(0, 40);
+  S.intent = $("intentIn").value.trim().slice(0, 400);
   if (INTENT_CHIPS.indexOf(S.intent) < 0) queueFix(S.intent);
   S.title = S.intent; S.detail = ""; S.where = ""; S.block = ""; S.qa = []; S.cq = ""; S.copts = []; S.pq = 0;
   S.clMode = hasAI() ? "ai" : "proto"; S.screen = "clarify";
@@ -571,7 +572,7 @@ function askClarify() {
     });
 }
 function answerClarify(a, typed) {
-  a = String(a || "").trim().slice(0, 80); if (!a || S.clLoading) return;
+  a = String(a || "").trim().slice(0, 400); if (!a || S.clLoading) return;
   if (typed) queueFix(a);
   S.qa.push({ q: S.cq, a: a, key: S.ckey || "" });
   if (S.clMode === "proto") {
@@ -587,12 +588,12 @@ function paintClarify() {
   $("clHist").innerHTML = ""; (S.qa || []).forEach(function (x) { var d = document.createElement("div"); d.textContent = x.q + " → " + x.a; $("clHist").appendChild(d); });
   $("clQ").textContent = S.clLoading ? "กำลังคิดคำถาม…" : S.cq;
   $("clOpts").innerHTML = "";
-  if (!S.clLoading) (S.copts || []).forEach(function (t) { var b = document.createElement("button"); b.textContent = t; b.onclick = function () { answerClarify(t); }; $("clOpts").appendChild(b); });
+  if (!S.clLoading) (S.copts || []).forEach(function (t) { var b = document.createElement("button"); b.textContent = chipLabel(t); b.title = t; b.onclick = function () { answerClarify(t); }; $("clOpts").appendChild(b); });
   $("clIn").value = ""; $("clIn").disabled = $("clSend").disabled = !!S.clLoading;
   $("clNote").hidden = !S.note; $("clNote").textContent = S.note ? S.note + " — ใช้คำถามพื้นฐานแทน" : "";
 }
 $("clSend").onclick = function () { answerClarify($("clIn").value, true); };
-$("clIn").onkeydown = function (e) { if (e.key === "Enter") answerClarify($("clIn").value, true); };
+$("clIn").onkeydown = function (e) { if (e.key === "Enter") { e.preventDefault(); answerClarify($("clIn").value, true); } };
 $("clSkip").onclick = function () { clFlight++; start(); };
 function goalText() { return S.title || S.detail || S.intent || "สิ่งที่ตั้งใจไว้"; }
 function protoSteps() { return stepsFor(S.intent).concat([["เริ่ม “" + goalText() + "” เลย — แค่เริ่มก็พอ"]]); }
@@ -605,7 +606,7 @@ function start() {
   if (S.mode === "ai") askAI();
 }
 $("go").onclick = toClarify;
-$("intentIn").onkeydown = function (e) { if (e.key === "Enter") toClarify(); };
+$("intentIn").onkeydown = function (e) { if (e.key === "Enter") { e.preventDefault(); toClarify(); } };
 $("did").onclick = function () {
   if (S.mode === "ai") {
     S.done.push(S.action); ev("done", S.action);
@@ -621,17 +622,18 @@ $("did").onclick = function () {
 };
 $("reached").onclick = function () { if (S.mode === "ai" && S.loading) inflight++; ev("reached", goalText()); finish(); };
 $("cant").onclick = function () { S.asking = true; save(); paintStep(); };
+function chipLabel(t) { t = String(t || ""); return t.length > 42 ? t.slice(0, 40) + "…" : t; } // long past answers stay readable as chips
 function paintWhyChips() { // my usual excuses first (learned from what I answered before), then common ones
   $("whyChips").innerHTML = "";
   excuseGuesses(S.intent, 6).forEach(function (t) {
-    var b = document.createElement("button"); b.textContent = t;
+    var b = document.createElement("button"); b.textContent = chipLabel(t); b.title = t;
     b.onclick = function () { $("whyIn").value = t; whyChip = true; cantWhy(); };
     $("whyChips").appendChild(b);
   });
 }
 var whyChip = false;
 function cantWhy() {
-  var why = $("whyIn").value.trim().slice(0, 80);
+  var why = $("whyIn").value.trim().slice(0, 300);
   if (!whyChip) queueFix(why); whyChip = false;
   S.asking = false;
   if (S.mode === "ai") { S.cant.push(S.action); S.why = (S.why || []).concat(why ? [S.action + " — เพราะ " + why] : []); ev("cant", S.action, why); askAI(); return; }
@@ -646,9 +648,14 @@ function aiBack() {
   S.mode = "ai"; S.note = ""; S.aiFailAt = 0; askAI(); return true;
 }
 $("whyGo").onclick = cantWhy;
-$("whyIn").onkeydown = function (e) { if (e.key === "Enter") cantWhy(); };
+$("whyIn").onkeydown = function (e) { if (e.key === "Enter") { e.preventDefault(); cantWhy(); } };
+// long answers: text boxes grow with what is typed
+["intentIn", "clIn", "whyIn", "lessonIn"].forEach(function (id) {
+  var el = $(id), grow = function () { el.style.height = "auto"; el.style.height = el.scrollHeight + 2 + "px"; };
+  el.addEventListener("input", grow); el.addEventListener("focus", grow);
+});
 $("lessonSave").onclick = function () {
-  var t = $("lessonIn").value.trim().slice(0, 120); if (!t) return;
+  var t = $("lessonIn").value.trim().slice(0, 400); if (!t) return;
   var l = readLog(), i = l.length - 1; while (i >= 0 && l[i].id !== S.id) i--;
   if (i < 0) { $("lessonMsg").textContent = "บันทึกไม่ได้"; return; }
   l[i].note = t; writeLog(l); S.lesson = t; save(); queueFix(t);
