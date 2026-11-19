@@ -193,6 +193,7 @@ button:disabled{opacity:.45}
 <button class="cfgl" id="cfgOpen" aria-label="settings">⚙</button>
 <button class="stl" id="stOpen" aria-label="stats">📊</button>
 
+<script src="brain.js"></script>
 <script>
 // ===== example step templates (prototype — not AI) =====
 // Each step is a list of interchangeable actions: [first choice, alternative, …]. "ขั้นนี้ทำไม่ได้" moves to the next one.
@@ -266,6 +267,7 @@ function errText(code, detail) {
     timeout: "AI ตอบช้าเกิน 40 วินาที — อัปเดตโค้ด Apps Script เป็นเวอร์ชันล่าสุด แล้วลองใหม่", offline: "เน็ตหลุด หรือเปิด URL ไม่ได้",
     server_error: "Apps Script error — เปิด Apps Script แล้วกด Run ฟังก์ชัน testAI 1 ครั้ง (กด Allow) แล้ว Deploy เป็น New version",
     server_exception: "Apps Script พัง — ถ้าข้อความบอกเรื่อง permission ให้ Run testAI ใน editor แล้วกด Allow",
+    server_outdated: "Apps Script ยังเป็นเวอร์ชันเก่า — copy Code.gs ล่าสุดไปวางทับ แล้ว Deploy เป็น New version (ครั้งสุดท้าย)",
     server_not_configured: "ยังไม่ได้ใส่ GEMINI_API_KEY หรือ FOCUS_PASSCODE ใน Script properties",
     no_model: "GEMINI_API_KEY ใช้ไม่ได้ (ผิด/ถูกปิด) — สร้างใหม่ที่ aistudio.google.com",
     upstream_400: "GEMINI_API_KEY ผิด หรือ AI ไม่รับคำขอ", upstream_401: "API key ผิด", upstream_403: "API key ไม่มีสิทธิ์ / ยังไม่เปิดใช้ Gemini API",
@@ -283,6 +285,19 @@ function callServer(url, body, ms) {
     .then(function (r) { return r.text(); }, function (e) { throw new Error(e && e.name === "AbortError" ? "timeout" : "offline"); })
     .then(function (t) { var d; try { d = JSON.parse(t); } catch (x) { throw new Error("server_error"); } return d; })
     .finally(function () { clearTimeout(tm); });
+}
+// one AI call through the Apps Script relay: the prompts come from brain.js, the key stays on the server
+function relayAI(system, user, schema, fast, ms, url, pass) {
+  return callServer(url || aiUrl(), { pass: pass || cfg.pass, action: "ai", system: system, user: user, schema: schema, fast: fast !== false, max_tokens: fast === false ? 4000 : 1024 }, ms)
+    .then(function (d) {
+      if (!d || !d.ok) throw srvErr(d, "?");
+      if (!d.data || typeof d.data !== "object") throw srvErr({ error: "server_outdated" });
+      d.data.provider = d.provider; return d.data;
+    });
+}
+function stepCtx(avoid) {
+  return { intent: S.intent || "สิ่งที่ตั้งใจไว้", detail: S.title && S.title !== S.intent ? S.title : S.detail || "", where: S.where || "", block: S.block || "",
+    done: S.done.slice(-30), cant: S.cant.slice(-30), why: (S.why || []).slice(-10), streak: cantStreak(), memory: memoryFor(S.intent, S.id), avoid: avoid || "" };
 }
 function aiUrl() { return cfg.url || DEFAULT_URL; }
 function hasAI() { return !!(aiUrl() && cfg.pass); }
@@ -397,10 +412,15 @@ window.addEventListener("beforeunload", function () { leaving = true; });
 function askAI() {
   var my = ++inflight;
   S.loading = true; save(); show();
-  callServer(aiUrl(), { pass: cfg.pass, intent: S.intent, detail: S.title && S.title !== S.intent ? S.title : S.detail || "", where: S.where || "", block: S.block || "", done: S.done, cant: S.cant, why: S.why || [], streak: cantStreak(), memory: memoryFor(S.intent, S.id) }, 40000)
+  relayAI(STEP_SYSTEM, stepUser(stepCtx()), STEP_SCHEMA, true, 40000)
+    .then(function (d) { // repeated an old step: ask once more, telling it not to
+      d.action = String(d.action || "").trim().slice(0, 120);
+      if (my !== inflight || !d.action || d.started || !isUsed(d.action)) return d;
+      return relayAI(STEP_SYSTEM, stepUser(stepCtx(d.action)), STEP_SCHEMA, true, 40000).then(function (d2) { d2.action = String(d2.action || "").trim().slice(0, 120); return d2.action ? d2 : d; }, function () { return d; });
+    })
     .then(function (d) {
       if (my !== inflight) return;
-      if (!d || !d.ok || !d.action) throw srvErr(d, "no_action");
+      if (!d || !d.action) throw srvErr({ error: "bad_output" });
       if (!d.started && isUsed(d.action)) { // the AI repeated itself: never show the same step twice, take the next smaller fallback instead
         var alt = easierLadder(S.intent).filter(function (a) { return !isUsed(a); })[0];
         d.action = alt || REST; d.started = false;
@@ -467,11 +487,13 @@ function nextProtoQ() {
 var clFlight = 0;
 function askClarify() {
   var my = ++clFlight; S.clLoading = true;
-  callServer(aiUrl(), { pass: cfg.pass, action: "clarify", intent: S.intent, qa: S.qa.map(function (x) { return { q: x.q, a: x.a }; }),
-    slot: slotOfHour(hourOf(Date.now())), memory: memoryFor(S.intent, S.id), excuses: excuseGuesses(S.intent, 6), details: pastDetails(S.intent) }, 30000)
+  relayAI(CLARIFY_SYSTEM, clarifyUser({ intent: S.intent || "สิ่งที่ตั้งใจไว้", qa: S.qa, slot: slotOfHour(hourOf(Date.now())), memory: memoryFor(S.intent, S.id),
+    excuses: excuseGuesses(S.intent, 6), details: pastDetails(S.intent) }), CLARIFY_SCHEMA, true, 30000)
     .then(function (d) {
       if (my !== clFlight || S.screen !== "clarify") return;
-      if (!d || !d.ok) throw srvErr(d, "?");
+      var c = function (x, n) { return String(x || "").trim().slice(0, n); };
+      d.title = c(d.title, 80); d.where = c(d.where, 60); d.excuse = c(d.excuse, 80); d.question = c(d.question, 120);
+      d.options = (Array.isArray(d.options) ? d.options : []).map(function (x) { return c(x, 60); }).filter(String);
       if (d.title) S.title = d.title; if (d.where) S.where = d.where; if (d.excuse) S.block = d.excuse;
       S.detail = S.title !== S.intent ? S.title : S.detail;
       if (d.ready || !d.question || S.qa.length >= 3) { start(); return; }
@@ -624,9 +646,10 @@ $("stCopy").onclick = function () {
 };
 $("stAsk").onclick = function () {
   var box = $("stAI"), btn = this; box.textContent = "กำลังวิเคราะห์…"; btn.disabled = true;
-  callServer(aiUrl(), { pass: cfg.pass, action: "analyze", rounds: rowsForAI(14) }, 60000)
+  var rows = rowsForAI(14);
+  if (!rows.length) { box.textContent = "ยังไม่มีข้อมูลให้วิเคราะห์ — ใช้ไปสักพักก่อน"; btn.disabled = false; return; }
+  relayAI(ANALYZE_SYSTEM, analyzeUser(rows), ANALYZE_SCHEMA, false, 60000)
     .then(function (d) {
-      if (!d || !d.ok) throw srvErr(d, "?");
       box.textContent = (d.insights || []).map(function (x) { return "• " + x; }).join("\n") + (d.try_next ? "\n\n👉 ลองสัปดาห์นี้: " + d.try_next : "");
     })
     .catch(function (e) { box.textContent = "วิเคราะห์ไม่ได้: " + errText(e && e.message, e && e.detail) + " — ใช้ปุ่ม Copy ส่งให้ AI ตัวอื่นแทนได้"; })
@@ -840,10 +863,10 @@ $("cfgTest").onclick = function () {
     .then(function (d) {
       if (!d || !d.ok) throw srvErr(d, "?");
       msg.textContent = "passcode ✓ · กำลังลองถาม AI จริง…";
-      return callServer(url, { pass: pass, intent: "ทำงาน", done: [], cant: [] }, 40000);
+      return relayAI(STEP_SYSTEM, stepUser({ intent: "ทำงาน", done: [], cant: [], why: [] }), STEP_SCHEMA, true, 40000, url, pass);
     })
     .then(function (d) {
-      if (!d || !d.ok || !d.action) throw srvErr(d, "no_action");
+      if (!d || !d.action) throw srvErr({ error: "bad_output" });
       msg.textContent = "✓ AI ตอบได้" + (d.provider ? " (" + (d.provider === "gemini" ? "Gemini" : "Claude") + ")" : "") + ": “" + d.action + "”";
     })
     .catch(function (e) { msg.textContent = "ไม่ผ่าน: " + errText(e && e.message, e && e.detail); });
