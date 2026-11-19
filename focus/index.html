@@ -121,7 +121,8 @@ button:disabled{opacity:.45}
     <div class="ai" id="stAI"></div>
     <button class="pri" id="stAsk">🤖 ให้ AI วิเคราะห์</button>
     <button id="stCopy">📋 Copy ข้อมูลไปให้ AI ตัวอื่น</button>
-    <p class="sub" style="font-size:13px">ข้อมูลเก็บในเครื่องนี้เท่านั้น ไม่ได้อัปขึ้นเว็บ · ตอนกดวิเคราะห์จะส่งไป Apps Script ของคุณและ AI</p>
+    <p class="sub" style="font-size:13px" id="goalsStat"></p>
+    <p class="sub" style="font-size:13px">ข้อมูลโฟกัสถูกอัปขึ้น goals.md บน GitHub (สาธารณะ — ใครมีลิงก์ก็อ่านได้) ให้ AI อ่านได้ตลอด · ตอนกด 🤖 วิเคราะห์จะส่งไป Apps Script ของคุณและ AI</p>
     <button class="ghost" id="stBack">← กลับ</button>
   </section>
 
@@ -233,6 +234,7 @@ function logRound(out) {
   if (!S || S.logged) return;
   var l = readLog(); l.push(rowOf(S, out)); writeLog(l);
   S.logged = true;
+  if (window.queueGoals) queueGoals();
   try { localStorage.removeItem(OKEY); } catch (e) {}
 }
 function ev(r, a) { S.ev = S.ev || []; S.ev.push({ a: a, r: r, t: Math.round((Date.now() - (S.tYes || S.at)) / 1000) }); }
@@ -263,7 +265,10 @@ function paintStep() {
 function protoAction() { var opts = stepsFor(S.intent)[S.step].concat(FALLBACK); return opts[S.alt % opts.length]; }
 
 // ===== ask the server for the next single action =====
-var inflight = 0;
+var inflight = 0, leaving = false;
+// a reload/close aborts the request in flight: that is not "AI unreachable", so don't fall back or save anything then
+window.addEventListener("pagehide", function () { leaving = true; });
+window.addEventListener("beforeunload", function () { leaving = true; });
 function askAI() {
   var my = ++inflight;
   S.loading = true; save(); show();
@@ -283,7 +288,7 @@ function askAI() {
       save(); show();
     })
     .catch(function (e) {
-      if (my !== inflight) return;
+      if (my !== inflight || leaving) return;
       // can't reach the AI: carry on with the example steps, and say so
       var why = e && e.message === "unauthorized" ? "passcode ไม่ถูกต้อง" : e && e.message === "daily_limit" ? "ใช้ครบโควตาวันนี้แล้ว" : e && e.message === "rate_limited" ? "AI ฟรีใช้ถี่เกิน รอสักครู่" : "เชื่อม AI ไม่ได้";
       S.mode = "proto"; S.loading = false;
@@ -356,6 +361,7 @@ function paintStats() {
   if (st.intents.length) li("งานที่หลุดบ่อย: " + st.intents.map(function (i) { return i + " (" + st.intentsN[i] + ")"; }).join(", "));
   if (st.abandoned) li("เลิกกลางทาง " + st.abandoned + " ครั้ง");
   $("stAsk").hidden = !hasAI();
+  paintGoals();
 }
 // compact rows for the AI (no ids, short keys kept readable)
 function rowsForAI(days) {
@@ -404,6 +410,148 @@ $("stAsk").onclick = function () {
     .then(function () { clearTimeout(tm); btn.disabled = false; });
 };
 
+// ===== goals.md: one public page an AI can always read — goal scoreboard (focus + gym) + raw focus log =====
+// Uses the GitHub token already saved by the gym page (same site → same localStorage, key "gym.gh").
+var GOALS_PATH = "goals.md", GOALS_URL = "https://cheetahgit9999.github.io/cal/goals.md", GOALS_RAW = "https://raw.githubusercontent.com/cheetahgit9999/cal/main/goals.md";
+var GSKEY = "focus.goalsSync";
+function ghToken() { try { return (JSON.parse(localStorage.getItem("gym.gh")) || {}).token || ""; } catch (e) { return ""; } }
+function gsState() { try { return JSON.parse(localStorage.getItem(GSKEY)) || {}; } catch (e) { return {}; } }
+function setGs(o) { try { localStorage.setItem(GSKEY, JSON.stringify(o)); } catch (e) {} }
+function bkk(t) { return dstr(t); }
+function mondayOf(day) { var d = new Date(day + "T12:00:00+07:00"), wd = (d.getUTCDay() + 6) % 7; return dstr(d.getTime() - wd * 86400000); }
+function addDays(day, n) { return dstr(new Date(day + "T12:00:00+07:00").getTime() + n * 86400000); }
+function pct(a, b) { return b ? Math.round(a / b * 100) + "%" : "–"; }
+function focusWeek(rows) {
+  var st = stats(rows);
+  return { asked: st.asked, drift: st.asked ? st.drifted / st.asked : null, restart: st.drifted ? st.started / st.drifted : null,
+    med: st.medSec != null ? Math.round(st.medSec / 6) / 10 : null, abandoned: st.abandoned, drifted: st.drifted, started: st.started };
+}
+function gymWeek(ws) {
+  // from the gym page's own log (same site): training days with any ticked set, cardio, and upward PR saves
+  var g; try { g = JSON.parse(localStorage.getItem("gym.v2")) || {}; } catch (e) { g = {}; }
+  var we = addDays(ws, 6), days = 0, cardio = false, prs = 0;
+  Object.keys(g.log || {}).forEach(function (d) {
+    if (d < ws || d > we) return;
+    var P = g.log[d].p || {};
+    Object.keys(P).forEach(function (pg) {
+      var x = P[pg] || {};
+      if (pg === "SUN" && x.cardio) cardio = true;
+      else if (Object.keys(x.ex || {}).some(function (n) { return (x.ex[n].d || 0) > 0; })) days++;
+    });
+  });
+  Object.keys(g.prs || {}).forEach(function (b) { var L = g.prs[b] || []; L.forEach(function (x, i) {
+    var pv = L[i - 1], w = function (v) { return String(v || "").split("+").reduce(function (a, n) { return a + (parseFloat(n) || 0); }, 0); };
+    if (x.at >= ws && x.at <= we && (!pv || w(x.w) > w(pv.w) || (w(x.w) === w(pv.w) && +x.r > +pv.r))) prs++;
+  }); });
+  return { days: Math.min(days, 4), cardio: cardio, prs: prs };
+}
+function goalsDoc() {
+  var all = readLog(), now = Date.now(), ws = mondayOf(dstr(now));
+  var weeks = []; for (var i = 7; i >= 0; i--) weeks.push(addDays(ws, -7 * i));
+  function rowsIn(w) { var we = addDays(w, 6); return all.filter(function (r) { var d = dstr(r.at); return d >= w && d <= we; }); }
+  var F = weeks.map(function (w) { return focusWeek(rowsIn(w)); }), G = weeks.map(gymWeek);
+  var cur = F[7], prev = F[6], last4 = F.slice(4, 8).filter(function (x) { return x.asked; });
+  function avg(arr, k) { var v = arr.map(function (x) { return x[k]; }).filter(function (x) { return x != null; }); return v.length ? v.reduce(function (a, b) { return a + b; }, 0) / v.length : null; }
+  function p(v) { return v == null ? "–" : Math.round(v * 100) + "%"; }
+  function n(v) { return v == null ? "–" : String(Math.round(v * 10) / 10); }
+  var g4 = G.slice(4, 8);
+  var hours = {}; all.filter(function (r) { return r.ans === "yes" && now - r.at < 28 * 86400000; }).forEach(function (r) { var h = hourOf(r.at); hours[h] = (hours[h] || 0) + 1; });
+  var o = [];
+  o.push("# My goals — progress (auto-updated)");
+  o.push("");
+  o.push("- Updated: " + new Date(now).toISOString() + " (timezone Asia/Bangkok, weeks run Monday–Sunday)");
+  o.push("- Overall goal — **get a little better every day.** Compare each day with the days before it (daily table below), not only week to week.");
+  o.push("- Goal 1 — **Focus:** drift away from what I mean to do as little as possible; when I drift, get back to it fast.");
+  o.push("- Goal 2 — **Gym:** follow my split (TUE upper · WED lower · FRI push · SAT pull · SUN cardio) and keep adding weight (progressive overload).");
+  o.push("- If you are an AI reading this: tell me how well I'm tracking against these goals, whether today/this week is better than before, what's improving or slipping, and one small thing to do tomorrow. Be short and kind.");
+  o.push("- Gym details: https://cheetahgit9999.github.io/cal/gym/data.md · day status: https://cheetahgit9999.github.io/cal/gym/status.json");
+  o.push("");
+  o.push("## Scoreboard");
+  o.push("");
+  o.push("| Metric | This week | Last week | 4-week avg | Better if |");
+  o.push("|---|---|---|---|---|");
+  o.push("| Focus check-ins | " + cur.asked + " | " + prev.asked + " | " + n(avg(last4, "asked")) + " | – |");
+  o.push("| Drifted (share of check-ins) | " + p(cur.drift) + " | " + p(prev.drift) + " | " + p(avg(last4, "drift")) + " | lower |");
+  o.push("| Got back on task after drifting | " + p(cur.restart) + " | " + p(prev.restart) + " | " + p(avg(last4, "restart")) + " | higher |");
+  o.push("| Minutes to get back (median) | " + n(cur.med) + " | " + n(prev.med) + " | " + n(avg(last4, "med")) + " | lower |");
+  o.push("| Gave up midway | " + cur.abandoned + " | " + prev.abandoned + " | " + n(avg(last4, "abandoned")) + " | lower |");
+  o.push("| Gym days trained (of 4) | " + G[7].days + "/4 | " + G[6].days + "/4 | " + n(avg(g4, "days")) + " | higher |");
+  o.push("| Sunday cardio | " + (G[7].cardio ? "✓" : "–") + " | " + (G[6].cardio ? "✓" : "✗") + " | " + g4.filter(function (x) { return x.cardio; }).length + "/4 | done |");
+  o.push("| New PRs saved | " + G[7].prs + " | " + G[6].prs + " | " + n(avg(g4, "prs")) + " | higher |");
+  o.push("");
+  o.push("4-week avg: focus rows average only the weeks that had check-ins; gym rows average all 4 weeks. Gym days count TUE/WED/FRI/SAT programs with at least one set ticked.");
+  o.push("");
+  o.push("## Daily (last 14 days) — am I getting better every day?");
+  o.push("");
+  o.push("| Day | Check-ins | Drifted | Got back | Median min | Gym |");
+  o.push("|---|---|---|---|---|---|");
+  var gdb; try { gdb = JSON.parse(localStorage.getItem("gym.v2")) || {}; } catch (e) { gdb = {}; }
+  for (var di = 13; di >= 0; di--) {
+    var day = dstr(now - di * 86400000), dr = all.filter(function (r) { return dstr(r.at) === day; }), fx = focusWeek(dr);
+    var GP = ((gdb.log || {})[day] || {}).p || {}, gym = Object.keys(GP).map(function (pg) {
+      var x = GP[pg] || {}, sets = Object.keys(x.ex || {}).reduce(function (a, k) { return a + (x.ex[k].d || 0); }, 0);
+      return x.cardio ? "cardio ✓" : sets ? pg + " " + sets + " sets" + (x.doneAt ? " ✓" : "") : "";
+    }).filter(String).join(", ");
+    var wd = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Bangkok", weekday: "short" }).format(new Date(day + "T12:00:00+07:00"));
+    o.push("| " + day + " " + wd + " | " + fx.asked + " | " + (fx.asked ? fx.drifted + " (" + p(fx.drift) + ")" : "–") + " | " + (fx.drifted ? fx.started + "/" + fx.drifted : "–") + " | " + n(fx.med) + " | " + (gym || "–") + " |");
+  }
+  o.push("");
+  o.push("## Focus by week (last 8 weeks)");
+  o.push("");
+  o.push("| Week of | Check-ins | Drifted | Got back | Median min | Gave up |");
+  o.push("|---|---|---|---|---|---|");
+  weeks.forEach(function (w, i) { var x = F[i]; o.push("| " + w + " | " + x.asked + " | " + (x.asked ? x.drifted + " (" + p(x.drift) + ")" : "–") + " | " + (x.drifted ? x.started + " (" + p(x.restart) + ")" : "–") + " | " + n(x.med) + " | " + x.abandoned + " |"); });
+  o.push("");
+  o.push("## When I drift (last 4 weeks, by hour)");
+  o.push("");
+  var hs = Object.keys(hours).sort(function (a, b) { return a - b; });
+  o.push(hs.length ? hs.map(function (h) { return h + ":00 → " + hours[h]; }).join(" · ") : "No drift logged yet.");
+  o.push("");
+  o.push("## Raw focus log (all check-ins, oldest first)");
+  o.push("");
+  o.push("Fields: day, time, from (notify = opened from a reminder, manual = opened myself), drifted, intent (what I meant to do), outcome (no = not drifting, started = got back on task, abandoned = gave up midway), minutes (from answering yes to getting started), steps (✓ done, ✗ couldn't do).");
+  o.push("");
+  o.push("```json");
+  o.push(JSON.stringify(all.map(function (r) {
+    return { day: dstr(r.at), time: hhmm(r.at), from: r.src, drifted: r.ans === "yes", intent: r.intent, outcome: r.out,
+      minutes: r.sec != null ? Math.round(r.sec / 6) / 10 : undefined, steps: (r.steps || []).map(function (s) { return (s.r === "cant" ? "✗ " : "✓ ") + s.a; }) };
+  })));
+  o.push("```");
+  o.push("");
+  return o.join("\n");
+}
+function strHash(t) { var h = 0; for (var i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) | 0; return String(h); }
+var goalsT = null, goalsBusy = false;
+function queueGoals() { if (!ghToken()) return; clearTimeout(goalsT); goalsT = setTimeout(syncGoals, 30000); }
+function syncGoals(force) {
+  clearTimeout(goalsT);
+  var tok = ghToken(); if (!tok || goalsBusy) return Promise.resolve();
+  var doc = goalsDoc(), h = strHash(doc.replace(/^- Updated: .*$/m, "")), st = gsState();
+  if (force !== true && h === st.hash) return Promise.resolve();
+  goalsBusy = true;
+  var api = "https://api.github.com/repos/cheetahgit9999/cal/contents/" + GOALS_PATH, hd = { "Authorization": "Bearer " + tok, "Accept": "application/vnd.github+json" };
+  return fetch(api + "?ref=main", { headers: hd, cache: "no-store" })
+    .then(function (r) { if (r.status === 404) return null; if (!r.ok) throw new Error("GitHub " + r.status); return r.json(); })
+    .then(function (c) {
+      var body = { message: "goals: progress sync " + dstr(Date.now()), branch: "main", content: btoa(unescape(encodeURIComponent(doc))) };
+      if (c && c.sha) body.sha = c.sha;
+      return fetch(api, { method: "PUT", headers: hd, body: JSON.stringify(body) });
+    })
+    .then(function (r) { if (!r.ok) throw new Error("GitHub " + r.status); setGs({ hash: h, last: Date.now(), err: "" }); })
+    .catch(function (e) { var s0 = gsState(); s0.err = e.message; setGs(s0); })
+    .then(function () { goalsBusy = false; paintGoals(); });
+}
+function paintGoals() {
+  var el = $("goalsStat"); if (!el) return;
+  var st = gsState();
+  el.innerHTML = "";
+  if (!ghToken()) { el.textContent = "ยังไม่ได้อัป goals.md — ตั้ง token GitHub ในหน้า gym (⚙ → ☁️ GitHub) ก่อน"; return; }
+  el.appendChild(document.createTextNode((st.err ? "⚠️ " + st.err : st.last ? "✓ อัป goals.md ล่าสุด " + new Date(st.last).toLocaleString("en-GB", { timeZone: "Asia/Bangkok" }) : "รออัป…") + " · "));
+  var a = document.createElement("a"); a.href = GOALS_URL; a.textContent = "goals.md"; a.target = "_blank"; a.style.color = "#58a6ff"; el.appendChild(a);
+}
+window.queueGoals = queueGoals;
+document.addEventListener("visibilitychange", function () { if (document.visibilityState === "hidden") syncGoals(); });
+
 // settings
 var back = "ask";
 $("cfgOpen").onclick = function () { back = S.screen; S.screen = "cfg"; show(); };
@@ -432,6 +580,7 @@ try { var open = JSON.parse(localStorage.getItem(OKEY)); if (open && (!S || open
 if (fromNotify && history.replaceState) history.replaceState(null, "", location.pathname); // a later reload resumes instead of restarting
 if (fromNotify || !S) fresh(fromNotify ? "notify" : "manual");
 else { if (S.screen === "cfg" || S.screen === "stats") S.screen = "ask"; show(); if (S.mode === "ai" && S.loading && S.screen === "step") askAI(); }
+setTimeout(function () { syncGoals(); }, 3000);
 </script>
 </body>
 </html>
