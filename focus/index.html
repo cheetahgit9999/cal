@@ -242,7 +242,7 @@ var DEFAULT_URL = "https://script.google.com/macros/s/AKfycbyu5VOm3aXCMTdwx5g4Tr
 function errText(code, detail) {
   var m = {
     unauthorized: "passcode ไม่ถูกต้อง", daily_limit: "ใช้ครบโควตาวันนี้แล้ว", rate_limited: "AI ฟรีใช้ถี่เกิน รอสักครู่",
-    timeout: "AI ตอบช้าเกิน 25 วินาที ลองใหม่อีกครั้ง", offline: "เน็ตหลุด หรือเปิด URL ไม่ได้",
+    timeout: "AI ตอบช้าเกิน 40 วินาที — อัปเดตโค้ด Apps Script เป็นเวอร์ชันล่าสุด แล้วลองใหม่", offline: "เน็ตหลุด หรือเปิด URL ไม่ได้",
     server_error: "Apps Script error — เปิด Apps Script แล้วกด Run ฟังก์ชัน testAI 1 ครั้ง (กด Allow) แล้ว Deploy เป็น New version",
     server_exception: "Apps Script พัง — ถ้าข้อความบอกเรื่อง permission ให้ Run testAI ใน editor แล้วกด Allow",
     server_not_configured: "ยังไม่ได้ใส่ GEMINI_API_KEY หรือ FOCUS_PASSCODE ใน Script properties",

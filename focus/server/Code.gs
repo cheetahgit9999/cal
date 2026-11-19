@@ -35,8 +35,10 @@ function testAI() {
   var props = PropertiesService.getScriptProperties(), ai = provider_(props);
   if (!props.getProperty("FOCUS_PASSCODE")) Logger.log("✗ FOCUS_PASSCODE is missing in Script properties");
   if (!ai) { Logger.log("✗ No GEMINI_API_KEY (or ANTHROPIC_API_KEY) in Script properties"); return; }
-  Logger.log("Provider: " + ai.name + (ai.name === "gemini" ? " · model: " + (geminiModel_(ai, true) || "NONE FOUND (key wrong?)") : ""));
+  Logger.log("Provider: " + ai.name + (ai.name === "gemini" ? " · model: " + (geminiModel_(ai, true, true) || "NONE FOUND (key wrong?)") : ""));
+  var t0 = Date.now();
   var got = askAI_(ai, SYSTEM, "What I mean to do now: ทำงาน\nGive me the one next action.", SCHEMA, "low", 1024);
+  Logger.log("Took " + ((Date.now() - t0) / 1000).toFixed(1) + " s");
   Logger.log(got.ok ? "✓ AI answered: " + got.data.action : "✗ AI error: " + got.error + (got.detail ? " — " + got.detail : ""));
 }
 
@@ -167,19 +169,19 @@ function askAI_(ai, system, user, schema, effort, maxTokens) {
       fallbacks: "default"
     });
   }
-  return callGemini_(ai, system, user, schema, maxTokens);
+  return callGemini_(ai, system, user, schema, maxTokens, effort === "low");
 }
 
 // ===== Gemini (free tier) =====
 var GEMINI_API = "https://generativelanguage.googleapis.com/v1beta/";
-function callGemini_(ai, system, user, schema, maxTokens) {
-  var model = geminiModel_(ai, false);
+function callGemini_(ai, system, user, schema, maxTokens, fast) {
+  var model = geminiModel_(ai, false, fast);
   if (!model) return { ok: false, error: "no_model", detail: ai.why || "" };
-  var res = geminiPost_(ai, model, system, user, schema, maxTokens);
+  var res = geminiPost_(ai, model, system, user, schema, maxTokens, fast);
   if (res && res.code === 404) { // model retired or renamed: find a current one and retry once
-    model = geminiModel_(ai, true);
+    model = geminiModel_(ai, true, fast);
     if (!model) return { ok: false, error: "no_model", detail: ai.why || "" };
-    res = geminiPost_(ai, model, system, user, schema, maxTokens);
+    res = geminiPost_(ai, model, system, user, schema, maxTokens, fast);
   }
   if (!res || res.failed) return { ok: false, error: "network", detail: (res && res.failed) || "" };
   var why = (res.data && res.data.error && res.data.error.message) || "";
@@ -193,13 +195,20 @@ function callGemini_(ai, system, user, schema, maxTokens) {
   text = text.replace(/^\s*```(?:json)?\s*/i, "").replace(/\s*```\s*$/, ""); // tolerate a fenced reply
   try { return { ok: true, data: JSON.parse(text) }; } catch (x) { return { ok: false, error: "bad_output" }; }
 }
-function geminiPost_(ai, model, system, user, schema, maxTokens) {
+function geminiPost_(ai, model, system, user, schema, maxTokens, fast) {
   // JSON mode + the shape described in the instruction (works across Gemini versions)
   var body = {
     system_instruction: { parts: [{ text: system + " Reply with only a JSON object matching this JSON Schema: " + JSON.stringify(schema) }] },
     contents: [{ role: "user", parts: [{ text: user }] }],
     generationConfig: { response_mime_type: "application/json", maxOutputTokens: maxTokens }
   };
+  // one short step needs no long "thinking": it made replies take 40 s+. Older/other models may reject the field → retry without it.
+  if (fast) body.generationConfig.thinkingConfig = { thinkingBudget: 0 };
+  var r1 = geminiSend_(ai, model, body);
+  if (fast && r1 && r1.code === 400) { delete body.generationConfig.thinkingConfig; return geminiSend_(ai, model, body); }
+  return r1;
+}
+function geminiSend_(ai, model, body) {
   try {
     var r = UrlFetchApp.fetch(GEMINI_API + "models/" + encodeURIComponent(model) + ":generateContent", {
       method: "post", contentType: "application/json", headers: { "x-goog-api-key": ai.key },
@@ -211,10 +220,11 @@ function geminiPost_(ai, model, system, user, schema, maxTokens) {
   } catch (x) { return { failed: String(x && x.message || x) }; } // e.g. "no permission to call UrlFetchApp" until testAI is run once
 }
 // newest stable "flash" model this key can call; cached for a week, re-found when it disappears
-function geminiModel_(ai, refresh) {
+function geminiModel_(ai, refresh, fast) {
   var pinned = ai.props.getProperty("GEMINI_MODEL");
   if (pinned && !refresh) return pinned;
-  var cached = ai.props.getProperty("GEMINI_MODEL_AUTO") || "", parts = cached.split("|");
+  var KEY = fast ? "GEMINI_MODEL_FAST" : "GEMINI_MODEL_AUTO"; // fast = a "lite" model for the quick next-step answers
+  var cached = ai.props.getProperty(KEY) || "", parts = cached.split("|");
   if (!refresh && parts[0] && Date.now() - Number(parts[1] || 0) < 7 * 86400000) return parts[0];
   var names = [];
   try {
@@ -232,15 +242,16 @@ function geminiModel_(ai, refresh) {
       page = d.nextPageToken; if (!page) break;
     }
   } catch (x) { ai.why = String(x && x.message || x); }
-  var best = pickGemini_(names);
-  if (best) ai.props.setProperty("GEMINI_MODEL_AUTO", best + "|" + Date.now());
+  var best = pickGemini_(names, fast);
+  if (best) ai.props.setProperty(KEY, best + "|" + Date.now());
   return best || pinned || parts[0] || null;
 }
-function pickGemini_(names) {
+function pickGemini_(names, fast) {
   var skip = /(preview|exp|experimental|image|tts|audio|live|vision|embedding|aqa|learnlm|robotics|thinking|latest|-\d{3,}$)/i;
   function ver(n) { var m = n.match(/gemini-(\d+(?:\.\d+)?)/i); return m ? parseFloat(m[1]) : 0; }
   function rank(list) { return list.sort(function (a, b) { return ver(b) - ver(a) || a.length - b.length; })[0]; }
   var ok = names.filter(function (n) { return /^gemini-/i.test(n) && !skip.test(n); });
+  if (fast) { var lite = rank(ok.filter(function (n) { return /flash/i.test(n) && /lite/i.test(n); })); if (lite) return lite; }
   return rank(ok.filter(function (n) { return /flash/i.test(n) && !/lite/i.test(n); }))
       || rank(ok.filter(function (n) { return /flash/i.test(n); }))
       || rank(ok) || null;
