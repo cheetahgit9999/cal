@@ -10,10 +10,14 @@
 <!--
   /focus/ — one small next action when attention has drifted.
 
-  PROTOTYPE. The steps below are fixed example templates in this file; no AI is called.
-  This site is public (GitHub Pages): never put API keys here, and nothing the user types is sent
-  anywhere — answers live only in this tab's sessionStorage (cleared when the tab closes).
-  Real AI-generated steps need a server-side API that authenticates the user first.
+  Two modes:
+  - AI: when ⚙ has a server URL + passcode (saved only on this device), each step is asked from
+    focus/server/Code.gs (a Google Apps Script web app the owner deploys). That script holds the
+    Anthropic API key and checks the passcode; the key is never in this public page.
+  - Prototype: no server set up, or the server can't be reached → fixed example templates from this
+    file, clearly labelled. It never pretends to be AI.
+  The round (intent, steps) lives only in this tab's sessionStorage. In AI mode the intent and the
+  steps are sent to the owner's Apps Script and to Claude to pick the next step; nothing else.
 
   Opening from a notification: link to  …/cal/focus/?src=notify  — that always starts a fresh round.
   Detecting "5 minutes in an app" and sending that notification is NOT this page's job; whatever sends
@@ -49,6 +53,18 @@ input:focus{outline:none;border-color:var(--acc)}
 .done{text-align:center}
 .done .ic{font-size:56px}
 .small{display:block;margin:0 auto}
+.proto.ai{color:#a5d6ff;border-color:#1f6feb66}
+.note{text-align:center;color:#d29922;font-size:13px;margin:0}
+.step.wait .a{color:var(--dim)}
+button:disabled{opacity:.45}
+.cfgl{position:fixed;right:max(14px,env(safe-area-inset-right));bottom:max(14px,env(safe-area-inset-bottom));background:none;border:0;color:var(--dim);font-size:20px;padding:8px}
+#s-cfg{justify-content:flex-start;padding-top:10px}
+#s-cfg h1{font-size:22px}
+#s-cfg label{font-size:14px;color:var(--mut);display:block;margin-bottom:6px}
+#s-cfg input{font-size:16px}
+#s-cfg .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#s-cfg .row button{padding:14px;font-size:16px}
+#cfgMsg{text-align:center;font-size:14px;color:var(--mut);min-height:20px;margin:0}
 </style>
 </head>
 <body>
@@ -81,9 +97,22 @@ input:focus{outline:none;border-color:var(--acc)}
   <!-- 3. one action at a time -->
   <section class="screen" id="s-step">
     <div class="intent" id="intentLbl"></div>
-    <div class="step"><div class="n" id="stepN"></div><div class="a" id="stepA"></div></div>
+    <div class="step" id="stepBox"><div class="n" id="stepN"></div><div class="a" id="stepA"></div></div>
+    <p class="note" id="stepNote" hidden></p>
     <button class="pri" id="did">✓ ทำแล้ว</button>
     <button class="ghost" id="cant">ขั้นนี้ทำไม่ได้</button>
+  </section>
+
+  <!-- settings -->
+  <section class="screen" id="s-cfg">
+    <h1>⚙ เชื่อม AI</h1>
+    <div><label>Server URL (Apps Script /exec)</label><input id="cfgUrl" type="url" inputmode="url" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off"></div>
+    <div><label>Passcode</label><input id="cfgPass" type="password" autocomplete="off"></div>
+    <p id="cfgMsg"></p>
+    <div class="row"><button id="cfgTest">ทดสอบ</button><button class="yes" id="cfgSave">บันทึก</button></div>
+    <button class="ghost" id="cfgClear">ล้างการตั้งค่า (ใช้ขั้นตอนตัวอย่าง)</button>
+    <p class="sub" style="font-size:13px">เก็บไว้ในเครื่องนี้เท่านั้น · เวลาใช้ AI สิ่งที่พิมพ์และขั้นที่ทำแล้วจะถูกส่งไป Apps Script ของคุณและ Claude เพื่อคิดขั้นถัดไป</p>
+    <button class="ghost" id="cfgBack">← กลับ</button>
   </section>
 
   <!-- 4. started -->
@@ -92,6 +121,7 @@ input:focus{outline:none;border-color:var(--acc)}
     <button class="ghost small" id="again2">เริ่มรอบใหม่</button>
   </section>
 </div>
+<button class="cfgl" id="cfgOpen" aria-label="settings">⚙</button>
 
 <script>
 // ===== example step templates (prototype — not AI) =====
@@ -145,26 +175,73 @@ function stepsFor(t) {
   return genericSteps(t);
 }
 
-// ===== round state: only in this tab (sessionStorage), so a reload resumes but nothing is kept or sent =====
+// ===== AI connection (set in ⚙, kept only on this device) =====
+var CKEY = "focus.cfg", cfg = {};
+try { cfg = JSON.parse(localStorage.getItem(CKEY)) || {}; } catch (e) { cfg = {}; }
+function hasAI() { return !!(cfg.url && cfg.pass); }
+var MAX_STEPS = 8;
+
+// ===== round state: only in this tab (sessionStorage), so a reload resumes =====
 var KEY = "focus.round";
 var S = null;
 function load() { try { return JSON.parse(sessionStorage.getItem(KEY)); } catch (e) { return null; } }
 function save() { try { S ? sessionStorage.setItem(KEY, JSON.stringify(S)) : sessionStorage.removeItem(KEY); } catch (e) {} }
-function fresh() { S = { screen: "ask", intent: "", step: 0, alt: 0, done: 0, at: Date.now() }; save(); show(); }
+function fresh() { S = { screen: "ask", intent: "", mode: "proto", step: 0, alt: 0, done: [], cant: [], action: "", started: false, loading: false, note: "", at: Date.now() }; save(); show(); }
 
 var $ = function (id) { return document.getElementById(id); };
 function show() {
-  ["ask", "no", "intent", "step", "end"].forEach(function (n) { $("s-" + n).classList.toggle("on", S.screen === n); });
-  $("proto").hidden = !(S.screen === "step" || S.screen === "end");
+  ["ask", "no", "intent", "step", "end", "cfg"].forEach(function (n) { $("s-" + n).classList.toggle("on", S.screen === n); });
+  var p = $("proto");
+  p.hidden = !(S.screen === "step" || S.screen === "end");
+  p.className = "proto" + (S.mode === "ai" ? " ai" : "");
+  p.textContent = S.mode === "ai" ? "AI ช่วยคิด · Claude" : "ต้นแบบ · ขั้นตอนตัวอย่าง ยังไม่ได้ใช้ AI";
+  $("cfgOpen").hidden = S.screen !== "ask";
   if (S.screen === "intent") { $("intentIn").value = S.intent || ""; setTimeout(function () { $("intentIn").focus(); }, 50); }
   if (S.screen === "step") paintStep();
   if (S.screen === "end") $("endSub").textContent = S.intent ? "“" + S.intent + "” — ทำต่อไปได้เลย" : "ทำต่อไปได้เลย";
+  if (S.screen === "cfg") { $("cfgUrl").value = cfg.url || ""; $("cfgPass").value = cfg.pass || ""; $("cfgMsg").textContent = hasAI() ? "เชื่อมไว้แล้ว" : "ยังไม่ได้เชื่อม — ตอนนี้ใช้ขั้นตอนตัวอย่าง"; }
 }
 function paintStep() {
-  var steps = stepsFor(S.intent), opts = steps[S.step].concat(FALLBACK);
   $("intentLbl").textContent = S.intent ? "ตั้งใจจะ: " + S.intent : "";
-  $("stepN").textContent = "ขั้นที่ " + (S.step + 1);
-  $("stepA").textContent = opts[S.alt % opts.length];
+  $("stepN").textContent = "ขั้นที่ " + (S.mode === "ai" ? S.done.length + 1 : S.step + 1);
+  var wait = S.mode === "ai" && S.loading;
+  $("stepBox").classList.toggle("wait", wait);
+  $("stepA").textContent = wait ? "กำลังคิด…" : S.mode === "ai" ? S.action : protoAction();
+  $("did").disabled = $("cant").disabled = wait;
+  $("stepNote").hidden = !S.note; $("stepNote").textContent = S.note || "";
+}
+function protoAction() { var opts = stepsFor(S.intent)[S.step].concat(FALLBACK); return opts[S.alt % opts.length]; }
+
+// ===== ask the server for the next single action =====
+var inflight = 0;
+function askAI() {
+  var my = ++inflight;
+  S.loading = true; save(); show();
+  var ctrl = window.AbortController ? new AbortController() : null;
+  var timer = setTimeout(function () { if (ctrl) ctrl.abort(); }, 25000);
+  fetch(cfg.url, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" }, // a "simple" request: no CORS preflight
+    body: JSON.stringify({ pass: cfg.pass, intent: S.intent, done: S.done, cant: S.cant }),
+    signal: ctrl ? ctrl.signal : undefined
+  })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      if (my !== inflight) return;
+      if (!d || !d.ok || !d.action) throw new Error((d && d.error) || "no_action");
+      S.action = d.action; S.started = !!d.started; S.loading = false; S.note = "";
+      save(); show();
+    })
+    .catch(function (e) {
+      if (my !== inflight) return;
+      // can't reach the AI: carry on with the example steps, and say so
+      var why = e && e.message === "unauthorized" ? "passcode ไม่ถูกต้อง" : e && e.message === "daily_limit" ? "ใช้ครบโควตาวันนี้แล้ว" : "เชื่อม AI ไม่ได้";
+      S.mode = "proto"; S.loading = false;
+      S.step = Math.min(S.done.length, stepsFor(S.intent).length - 1); S.alt = 0;
+      S.note = why + " — ใช้ขั้นตอนตัวอย่างแทน";
+      save(); show();
+    })
+    .then(function () { clearTimeout(timer); });
 }
 
 $("no").onclick = function () { S.screen = "no"; save(); show(); };
@@ -176,25 +253,57 @@ $("yes").onclick = function () { S.screen = "intent"; save(); show(); };
 });
 function start() {
   S.intent = $("intentIn").value.trim().slice(0, 40);
-  S.step = 0; S.alt = 0; S.screen = "step"; save(); show();
+  S.step = 0; S.alt = 0; S.done = []; S.cant = []; S.action = ""; S.started = false; S.note = "";
+  S.screen = "step"; S.mode = hasAI() ? "ai" : "proto";
+  save(); show();
+  if (S.mode === "ai") askAI();
 }
 $("go").onclick = start;
 $("intentIn").onkeydown = function (e) { if (e.key === "Enter") start(); };
 $("did").onclick = function () {
-  S.done++;
+  if (S.mode === "ai") {
+    S.done.push(S.action);
+    if (S.started || S.done.length >= MAX_STEPS) { S.screen = "end"; save(); show(); return; }
+    askAI(); return;
+  }
+  S.done.push(protoAction());
   if (S.step + 1 >= stepsFor(S.intent).length) { S.screen = "end"; }
   else { S.step++; S.alt = 0; }
-  save(); show();
+  S.note = ""; save(); show();
 };
-$("cant").onclick = function () { S.alt++; save(); paintStep(); };
+$("cant").onclick = function () {
+  if (S.mode === "ai") { S.cant.push(S.action); askAI(); return; }
+  S.alt++; save(); paintStep();
+};
 $("again1").onclick = fresh;
 $("again2").onclick = fresh;
+
+// settings
+var back = "ask";
+$("cfgOpen").onclick = function () { back = S.screen; S.screen = "cfg"; show(); };
+$("cfgBack").onclick = function () { S.screen = back; save(); show(); };
+$("cfgSave").onclick = function () {
+  cfg = { url: $("cfgUrl").value.trim(), pass: $("cfgPass").value };
+  try { localStorage.setItem(CKEY, JSON.stringify(cfg)); } catch (e) {}
+  $("cfgMsg").textContent = hasAI() ? "บันทึกแล้ว ✓" : "บันทึกแล้ว (ยังไม่ครบ — ใช้ขั้นตอนตัวอย่าง)";
+};
+$("cfgClear").onclick = function () { cfg = {}; try { localStorage.removeItem(CKEY); } catch (e) {} show(); };
+$("cfgTest").onclick = function () {
+  var url = $("cfgUrl").value.trim(), pass = $("cfgPass").value;
+  if (!url || !pass) { $("cfgMsg").textContent = "ใส่ URL และ passcode ก่อน"; return; }
+  $("cfgMsg").textContent = "กำลังทดสอบ…";
+  fetch(url, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ pass: pass, ping: true }) })
+    .then(function (r) { return r.json(); })
+    .then(function (d) { $("cfgMsg").textContent = d && d.ok ? "เชื่อมได้ ✓ passcode ถูกต้อง" : "ไม่ผ่าน: " + ((d && d.error) || "?"); })
+    .catch(function () { $("cfgMsg").textContent = "เชื่อมไม่ได้ — เช็ก URL (ต้องลงท้าย /exec และ deploy ให้ Anyone)"; });
+};
 
 // opened from a notification (?src=notify) → always a new round; otherwise resume this tab's round
 var fromNotify = /[?&]src=notify\b/.test(location.search);
 S = fromNotify ? null : load();
 if (fromNotify && history.replaceState) history.replaceState(null, "", location.pathname); // a later reload resumes instead of restarting
-if (!S) fresh(); else show();
+if (!S) fresh();
+else { if (S.screen === "cfg") S.screen = "ask"; show(); if (S.mode === "ai" && S.loading && S.screen === "step") askAI(); }
 </script>
 </body>
 </html>
