@@ -226,16 +226,16 @@ var PROGRAM = {
     { t: "4. T-Bar Row x1", s: 1, w: "40", r: "5" },
     { t: "5. Lat Pulldown x1", s: 1, w: "35", r: "" },
     { t: "6. Standing cable Curl x1 (rest 2-3min)", s: 1, w: "13.75", r: "7" },
-    { t: "7. 🔺Cable Tricep Extension x1 (rest 2-3min)", s: 1, w: "13.75", r: "7" },
-    { t: "8. Cable Hammer Curl x1", s: 1, w: "13.6", r: "" },
-    { t: "9. 🔺Cable Overhead Tricep Extension x1 (rest 2-3 min)", s: 1, w: "13.75", r: "" }
+    { t: "7. 🔺Cable Overhead Tricep Extension x1 (rest 2-3 min)", s: 1, w: "13.75", r: "" },
+    { t: "8. Abs Crunch x2", s: 2, w: "90", r: "5" }
   ]},
   WED: { label: "WEDNESDAY (LOWER)", ex: [
     { t: "1. Leg Extension x2", s: 2, w: "90", r: "6" },
     { t: "2. Hack squat x2", s: 2, w: "10", r: "6" },
     { t: "3. Hamstring Curl x2", s: 2, w: "50", r: "7" },
     { t: "4. SLDL x2", s: 2, w: "27.5", r: "8" },
-    { t: "5. Abs Crunch x2", s: 2, w: "90", r: "5" }
+    { t: "5. Cable Hammer Curl x1", s: 1, w: "13.6", r: "" },
+    { t: "6. 🔺Cable Tricep Extension x1 (rest 2-3min)", s: 1, w: "11.25", r: "7" }
   ]},
   THU: { label: "THURSDAY (REST)", rest: true },
   FRI: { label: "FRIDAY (PUSH)", ex: [
@@ -270,7 +270,8 @@ var REP_MIN = 5, REP_MAX = 10, REP_BUMP = 11, REST_GOAL = 180;
 var KEY = "gym.v2";
 // renamed exercises: history logged under the old name moves to the new one
 var RENAMED = {
-  TUE: { "8. Cable Hammer Curl x1 (rest 2-3min)": "8. Cable Hammer Curl x1", "1. Machine Pec Ty Deck x2": "1. Machine Pec Deck x2" },
+  TUE: { "8. Cable Hammer Curl x1 (rest 2-3min)": "8. Cable Hammer Curl x1", "1. Machine Pec Ty Deck x2": "1. Machine Pec Deck x2",
+    "9. 🔺Cable Overhead Tricep Extension x1 (rest 2-3 min)": "7. 🔺Cable Overhead Tricep Extension x1 (rest 2-3 min)" },
   WED: { "6. Abs Crunch x2": "5. Abs Crunch x2" },
   FRI: {
     "3. Machine Pec Deck x2": "1. Machine Pec Deck x2", "4. Incline Chest Press x2": "2. Incline Chest Press x2",
@@ -284,8 +285,18 @@ var RENAMED = {
     "Cable Hammer Curl x1 (2 min)": "6. Cable Hammer Curl x1", "Cable Hammer Curl x1": "6. Cable Hammer Curl x1"
   }
 };
+// exercises moved to another day (24 Nov): their notes move with them. Past days' logs stay on the day they were done;
+// saved PRs are shared by exercise name, so the weights carry over by themselves.
+var MOVED = [
+  ["TUE|7. 🔺Cable Tricep Extension x1 (rest 2-3min)", "WED|6. 🔺Cable Tricep Extension x1 (rest 2-3min)"],
+  ["TUE|8. Cable Hammer Curl x1", "WED|5. Cable Hammer Curl x1"],
+  ["WED|5. Abs Crunch x2", "TUE|8. Abs Crunch x2"]
+];
 function migrate(d) {
   d.notes = d.notes || {};
+  var before = JSON.parse(JSON.stringify(d.notes));
+  MOVED.forEach(function (m) { if (m[0] in before) delete d.notes[m[0]]; });
+  MOVED.forEach(function (m) { if (m[0] in before && !(m[1] in before)) d.notes[m[1]] = before[m[0]]; });
   Object.keys(d.log || {}).forEach(function (k) {
     var L = d.log[k];
     if (!L.p) { // older format: one program per date
