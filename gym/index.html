@@ -226,16 +226,16 @@ var PROGRAM = {
     { t: "4. T-Bar Row x1", s: 1, w: "40", r: "5" },
     { t: "5. Lat Pulldown x1", s: 1, w: "35", r: "" },
     { t: "6. Standing cable Curl x1 (rest 2-3min)", s: 1, w: "13.75", r: "7" },
-    { t: "7. 🔺Cable Tricep Extension x1 (rest 2-3min)", s: 1, w: "13.75", r: "7" },
-    { t: "8. Cable Hammer Curl x1", s: 1, w: "13.6", r: "" },
-    { t: "9. 🔺Cable Overhead Tricep Extension x1 (rest 2-3 min)", s: 1, w: "13.75", r: "" }
+    { t: "7. 🔺Cable Overhead Tricep Extension x1 (rest 2-3 min)", s: 1, w: "13.75", r: "" },
+    { t: "8. Abs Crunch x2", s: 2, w: "90", r: "5" }
   ]},
   WED: { label: "WEDNESDAY (LOWER)", ex: [
     { t: "1. Leg Extension x2", s: 2, w: "90", r: "6" },
     { t: "2. Hack squat x2", s: 2, w: "10", r: "6" },
     { t: "3. Hamstring Curl x2", s: 2, w: "50", r: "7" },
     { t: "4. SLDL x2", s: 2, w: "27.5", r: "8" },
-    { t: "5. Abs Crunch x2", s: 2, w: "90", r: "5" }
+    { t: "5. Cable Hammer Curl x1", s: 1, w: "13.6", r: "" },
+    { t: "6. 🔺Cable Tricep Extension x1 (rest 2-3min)", s: 1, w: "11.25", r: "7" }
   ]},
   THU: { label: "THURSDAY (REST)", rest: true },
   FRI: { label: "FRIDAY (PUSH)", ex: [
@@ -270,7 +270,8 @@ var REP_MIN = 5, REP_MAX = 10, REP_BUMP = 11, REST_GOAL = 180;
 var KEY = "gym.v2";
 // renamed exercises: history logged under the old name moves to the new one
 var RENAMED = {
-  TUE: { "8. Cable Hammer Curl x1 (rest 2-3min)": "8. Cable Hammer Curl x1", "1. Machine Pec Ty Deck x2": "1. Machine Pec Deck x2" },
+  TUE: { "8. Cable Hammer Curl x1 (rest 2-3min)": "8. Cable Hammer Curl x1", "1. Machine Pec Ty Deck x2": "1. Machine Pec Deck x2",
+    "9. 🔺Cable Overhead Tricep Extension x1 (rest 2-3 min)": "7. 🔺Cable Overhead Tricep Extension x1 (rest 2-3 min)" },
   WED: { "6. Abs Crunch x2": "5. Abs Crunch x2" },
   FRI: {
     "3. Machine Pec Deck x2": "1. Machine Pec Deck x2", "4. Incline Chest Press x2": "2. Incline Chest Press x2",
@@ -284,8 +285,18 @@ var RENAMED = {
     "Cable Hammer Curl x1 (2 min)": "6. Cable Hammer Curl x1", "Cable Hammer Curl x1": "6. Cable Hammer Curl x1"
   }
 };
+// exercises moved to another day (24 Nov): their notes move with them. Past days' logs stay on the day they were done;
+// saved PRs are shared by exercise name, so the weights carry over by themselves.
+var MOVED = [
+  ["TUE|7. 🔺Cable Tricep Extension x1 (rest 2-3min)", "WED|6. 🔺Cable Tricep Extension x1 (rest 2-3min)"],
+  ["TUE|8. Cable Hammer Curl x1", "WED|5. Cable Hammer Curl x1"],
+  ["WED|5. Abs Crunch x2", "TUE|8. Abs Crunch x2"]
+];
 function migrate(d) {
   d.notes = d.notes || {};
+  var before = JSON.parse(JSON.stringify(d.notes));
+  MOVED.forEach(function (m) { if (m[0] in before) delete d.notes[m[0]]; });
+  MOVED.forEach(function (m) { if (m[0] in before && !(m[1] in before)) d.notes[m[1]] = before[m[0]]; });
   Object.keys(d.log || {}).forEach(function (k) {
     var L = d.log[k];
     if (!L.p) { // older format: one program per date
@@ -433,6 +444,7 @@ function savePR(prog, item, e) {
   db.audit.push({ id: Date.now().toString(36), ts: Date.now(), at: cur, prog: prog, name: item.t, base: b,
     from: { w: String(from.w), r: String(from.r == null ? "" : from.r) }, to: { w: e.w, r: String(e.r) }, prev: prev });
   save();
+  if (window.syncNow) setTimeout(function () { syncNow(); }, 3000); // every save goes up to data.md right away
 }
 // undo a save: put the saved numbers (and that day's entry) back to what they were before
 function undoSave(id) {
@@ -455,6 +467,18 @@ function lastAuditFor(base) {
 }
 function openLog() {
   var box = document.getElementById("logList"); box.innerHTML = "";
+  var D = poData().filter(function (g) { return g.saves.length; });
+  if (D.length) {
+    box.appendChild(el("div", "lw", "สรุปแต่ละท่า (ครั้งแรก → ล่าสุด)"));
+    D.forEach(function (g) {
+      var up = g.trend.charAt(0) === "▲", dn = g.trend.charAt(0) === "▼";
+      var row = el("div", "lg"), t = el("div", "lt");
+      t.appendChild(el("div", "ln", g.name));
+      t.appendChild(el("div", "lv " + (up ? "up" : dn ? "dn" : ""), g.first.w + "×" + (g.first.r || "–") + "  →  " + g.last.w + "×" + (g.last.r || "–") + "   " + g.trend));
+      row.appendChild(t); box.appendChild(row);
+    });
+    box.appendChild(el("div", "lw", "ทุกครั้งที่เซฟ (ล่าสุดก่อน)"));
+  }
   var l = (db.audit || []).slice().reverse();
   if (!l.length) box.appendChild(el("div", "mu", "ยังไม่มีการเซฟ"));
   l.forEach(function (a) {
@@ -491,7 +515,20 @@ function lastFor(prog, name, before) {
     var e = dp(days[i], prog).ex[name];
     if (hasReps(e)) return { day: days[i], e: e };
   }
-  return null;
+  var all = histAll(name, before); // never done on this day yet (e.g. moved from another day): use its history from any day
+  return all.length ? { day: all[0].d, e: all[0].x } : null;
+}
+// every logged session of this exercise on ANY day (same exercise name, old names and moved days included), newest first
+function histAll(name, before) {
+  var b = baseName(name), out = [];
+  Object.keys(db.log).forEach(function (d) {
+    if (before && d >= before) return;
+    Object.keys(db.log[d].p || {}).forEach(function (pg) {
+      var ex = db.log[d].p[pg].ex || {};
+      Object.keys(ex).forEach(function (n) { if (baseName(n) === b && hasReps(ex[n])) out.push({ d: d, pg: pg, n: n, x: ex[n] }); });
+    });
+  });
+  return out.sort(function (a, z) { return a.d < z.d ? 1 : a.d > z.d ? -1 : 0; });
 }
 function entryFor(prog, item, k) {
   var L = dp(k, prog);
@@ -625,12 +662,12 @@ function card(prog, item) {
 
 
   if (openHist[item.t]) {
-    var h = el("div", "hist");
-    Object.keys(db.log).filter(function (d) { return dp(d, prog) && hasReps(dp(d, prog).ex[item.t]); })
-      .sort().reverse().slice(0, 30).forEach(function (d) {
-        var x = dp(d, prog).ex[item.t], r = el("div");
-        r.appendChild(el("span", null, dLabel(d))); r.appendChild(el("span", null, x.w + " × " + x.r)); h.appendChild(r);
-      });
+    var h = el("div", "hist"), H = histAll(item.t);
+    if (!H.length) h.appendChild(el("div", null, "ยังไม่มีประวัติ"));
+    H.slice(0, 60).forEach(function (s) { // this exercise on every day it was done, including before it moved days
+      var r = el("div");
+      r.appendChild(el("span", null, dLabel(s.d) + (s.pg !== prog ? " · " + s.pg : ""))); r.appendChild(el("span", null, s.x.w + " × " + s.x.r)); h.appendChild(r);
+    });
     c.appendChild(h);
   }
   return c;
@@ -954,7 +991,15 @@ function exportText() {
       return;
     }
     P.ex.forEach(function (it) {
-      var rows = pd.filter(function (d) { return hasReps(dp(d, p).ex[it.t]); });
+      var rows = pd.filter(function (d) { return hasReps(dp(d, p).ex[it.t]); }).map(function (d) { return { d: d, pg: p, n: it.t }; });
+      // sessions from a day that no longer has this exercise (it moved days / was renamed): kept and shown here too
+      var b = baseName(it.t);
+      histAll(it.t).forEach(function (s) {
+        if (s.pg === p && s.n === it.t) return;
+        var still = (PROGRAM[s.pg].ex || []).some(function (q) { return baseName(q.t) === b; });
+        if (!still) rows.push({ d: s.d, pg: s.pg, n: s.n });
+      });
+      rows.sort(function (a, z) { return a.d < z.d ? -1 : a.d > z.d ? 1 : 0; });
       out.push(""); out.push("### " + it.t);
       var nt = noteOf(p, it.t); if (nt) { out.push(""); out.push("Note: " + nt.replace(/\n+/g, " / ")); }
       var prl = (db.prs && db.prs[baseName(it.t)]) || [];
@@ -963,8 +1008,8 @@ function exportText() {
       out.push(""); out.push("| Date | Weight (kg) | Total kg | Reps | Sets done | Est. 1RM | vs previous |");
       out.push("|---|---|---|---|---|---|---|");
       var prev = null;
-      rows.forEach(function (d) {
-        var x = dp(d, p).ex[it.t], tw = wSum(x.w), r = +x.r, one = tw * (1 + r / 30), ch = "first";
+      rows.forEach(function (row) {
+        var d = row.d + (row.pg !== p ? " (" + row.pg + ")" : ""), x = dp(row.d, row.pg).ex[row.n], tw = wSum(x.w), r = +x.r, one = tw * (1 + r / 30), ch = "first";
         if (prev) {
           var dw = tw - prev.tw, dr = r - prev.r;
           ch = dw > 0 ? "weight +" + fmt(dw) : dw < 0 ? "weight " + fmt(dw) : dr > 0 ? "reps +" + dr : dr < 0 ? "reps " + dr : "same";
@@ -1105,6 +1150,55 @@ function statusTable() {
   });
   return o.join("\n");
 }
+// ===== progressive overload from every 💾 save (kept forever in db.audit; undone saves don't count) =====
+// for each exercise (shared across days): every save with ▲/▼/= for weight and reps, and the overall trend
+function poData() {
+  var by = {}, order = [];
+  ORDER.forEach(function (p) { (PROGRAM[p].ex || []).forEach(function (it) { var b = baseName(it.t); if (!by[b]) { by[b] = { base: b, name: it.t.replace(/^\s*\d+\.\s*/, "").replace(/🔺/g, "").replace(/\s+x\d+.*$/i, "").trim(), days: [], saves: [] }; order.push(b); } if (by[b].days.indexOf(p) < 0) by[b].days.push(p); }); });
+  (db.audit || []).filter(function (a) { return !a.undone; }).sort(function (a, z) { return a.ts - z.ts; }).forEach(function (a) {
+    var g = by[a.base]; if (!g) { g = by[a.base] = { base: a.base, name: a.name, days: [a.prog], saves: [] }; order.push(a.base); }
+    var dw = wSum(a.to.w) - wSum(a.from.w), dr = (+a.to.r || 0) - (+a.from.r || 0);
+    g.saves.push({ ts: a.ts, at: a.at, prog: a.prog, from: a.from, to: a.to, dw: dw, dr: dr,
+      dir: dw > 0 ? "▲ น้ำหนัก" : dw < 0 ? "▼ น้ำหนัก" : dr > 0 ? "▲ reps" : dr < 0 ? "▼ reps" : "= เท่าเดิม" });
+  });
+  return order.map(function (b) {
+    var g = by[b], s = g.saves;
+    if (!s.length) { g.trend = "ยังไม่เคยเซฟ"; return g; }
+    var f = s[0].from, l = s[s.length - 1].to, dw = wSum(l.w) - wSum(f.w), dr = (+l.r || 0) - (+f.r || 0);
+    g.first = f; g.last = l; g.dw = dw; g.dr = dr; g.lastAt = s[s.length - 1].at;
+    g.ups = s.filter(function (x) { return x.dw > 0 || (x.dw === 0 && x.dr > 0); }).length;
+    g.downs = s.filter(function (x) { return x.dw < 0 || (x.dw === 0 && x.dr < 0); }).length;
+    var lastUp = null; s.forEach(function (x) { if (x.dw > 0 || (x.dw === 0 && x.dr > 0)) lastUp = x.at; });
+    g.lastUp = lastUp;
+    g.trend = dw > 0 ? "▲ ขึ้น (น้ำหนัก)" : dw < 0 ? "▼ ลง (น้ำหนัก)" : dr > 0 ? "▲ ขึ้น (reps)" : dr < 0 ? "▼ ลง (reps)" : "= ค้าง";
+    return g;
+  });
+}
+function poText() {
+  var D = poData(), o = [];
+  o.push("Every time I press 💾 เซฟ the change is stored forever (undone saves are left out). Same exercise on different days = one line.");
+  o.push("▲ = progressive overload (weight up, or same weight with more reps) · ▼ = went down · = = stuck.");
+  o.push("");
+  o.push("| Exercise | Days | First saved | Latest | Weight | Reps | Trend | Saves ▲/▼ | Last ▲ |");
+  o.push("|---|---|---|---|---|---|---|---|---|");
+  D.forEach(function (g) {
+    if (!g.saves.length) { o.push("| " + g.name + " | " + g.days.join(", ") + " | – | – | – | – | ยังไม่เคยเซฟ | 0 | – |"); return; }
+    o.push("| " + g.name + " | " + g.days.join(", ") + " | " + g.first.w + "×" + (g.first.r || "–") + " | " + g.last.w + "×" + (g.last.r || "–") + " (" + g.lastAt + ") | " +
+      (g.dw > 0 ? "+" : "") + fmt(g.dw) + " kg | " + (g.dr > 0 ? "+" : "") + g.dr + " | " + g.trend + " | " + g.saves.length + " (" + g.ups + "/" + g.downs + ") | " + (g.lastUp || "never") + " |");
+  });
+  var any = D.filter(function (g) { return g.saves.length; });
+  if (any.length) {
+    o.push(""); o.push("### Every save, per exercise"); 
+    any.forEach(function (g) {
+      o.push(""); o.push("**" + g.name + "**");
+      g.saves.forEach(function (x) {
+        o.push("- " + x.at + " " + new Date(x.ts).toLocaleTimeString("en-GB", { timeZone: TZ, hour: "2-digit", minute: "2-digit" }) + " · " + x.prog + " · " +
+          x.from.w + "×" + (x.from.r || "–") + " → " + x.to.w + "×" + (x.to.r || "–") + " · " + x.dir);
+      });
+    });
+  }
+  return o.join("\n");
+}
 function dataDoc() {
   var ws = weekOf(TODAY);
   return [
@@ -1113,7 +1207,7 @@ function dataDoc() {
     "This page is my live gym log, published automatically from my tracker every time I log a set.",
     "If you are an AI reading this: use it to understand how I train and how I'm progressing.",
     "",
-    "Sections: 0) workout status per day, 1) this week's summary, 2) last week's summary, 3) full history per exercise, 4) raw JSON.",
+    "Sections: 0) workout status per day, PO) progressive overload from every save, 1) this week's summary, 2) last week's summary, 3) full history per exercise, 4) raw JSON.",
     "Machine-readable day status: https://cheetahgit9999.github.io/cal/gym/status.json",
     "",
     "---",
@@ -1121,6 +1215,12 @@ function dataDoc() {
     "## 0) Workout status (last 14 days)",
     "",
     statusTable(),
+    "",
+    "---",
+    "",
+    "## PO) Progressive overload — every 💾 save, up or down",
+    "",
+    poText(),
     "",
     "---",
     "",
